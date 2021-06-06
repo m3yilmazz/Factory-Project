@@ -1,7 +1,7 @@
 import java.util.HashMap;
 import java.util.Map;
 
-class JobTypes {
+public class JobTypes {
     static final String CNC = "CNC";
     static final String CNC_METRIC = "METRE";
     static final String DOKUM = "DÖKÜM";

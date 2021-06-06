@@ -56,29 +56,32 @@ public class UserClient extends JFrame {
 		loginJButton.addActionListener( new ActionListener() {
 				public void actionPerformed( ActionEvent event )
 				{
-					String message, userName, userPassword, response;
+					Thread newThread = new Thread(() -> {
+						String message, userName, userPassword, response;
 
-					userName = userNameJTextField.getText();
-					userPassword = userPasswordJTextField.getText();
+						userName = userNameJTextField.getText();
+						userPassword = userPasswordJTextField.getText();
 
-					message = "LOGIN" + "*" + userName + "*" + userPassword;
+						message = "LOGIN" + "*" + userName + "*" + userPassword;
 
-					response = sendCommand(message, networkInput, networkOutput);
+						response = sendCommand(message, networkInput, networkOutput);
 
-					if(response.equals("410")){
-						loginResponseJTextArea.setText("Response Code: 410 \nResponse Message: There is one or more missing argument in the command.");
-					}
-					else if(response.equals("200")){
-						loginResponseJTextArea.setText("Response Code: 200 \nResponse Message: The username or password is wrong.");
-					}
-					else if(response.equals("100")){
-						remove( userPropsPanel );
-						remove( buttonAndResponseCodePanel );
-						setLayout( new GridLayout( 1, 2, 10, 10 ) );
-						setSize( 1000, 900 );
-						add(commandButtonsPanel);
-						add(responseJPanel);
-					}
+						if(response.equals("410")){
+							loginResponseJTextArea.setText("Response Code: 410 \nResponse Message: There is one or more missing argument in the command.");
+						}
+						else if(response.equals("200")){
+							loginResponseJTextArea.setText("Response Code: 200 \nResponse Message: The username or password is wrong.");
+						}
+						else if(response.equals("100")){
+							remove( userPropsPanel );
+							remove( buttonAndResponseCodePanel );
+							setLayout( new GridLayout( 1, 2, 10, 10 ) );
+							setSize( 1000, 900 );
+							add(commandButtonsPanel);
+							add(responseJPanel);
+						}
+					});
+					newThread.start();
 				}
 			}
 		);
@@ -91,25 +94,28 @@ public class UserClient extends JFrame {
 		getMachinesJButton.addActionListener( new ActionListener() {
 				public void actionPerformed( ActionEvent event )
 				{
-					String message, response;
-					String [] splitted;
-					message = Commands.GET_MACHINES;
+					Thread newThread = new Thread(() -> {
+						String message, response;
+						String [] splitted;
+						message = Commands.GET_MACHINES;
 
-					response = sendCommand(message, networkInput, networkOutput);
+						response = sendCommand(message, networkInput, networkOutput);
 
-					if(response.equals("220")){
-						responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The machine list is empty.");
-					}
-					else {
-						splitted = response.split("\\u002A");
-						StringBuffer buffer = new StringBuffer();
-						for(String line: splitted){
-							buffer.append(line);
-							buffer.append("\n");
+						if(response.equals("220")){
+							responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The machine list is empty.");
 						}
+						else {
+							splitted = response.split("\\u002A");
+							StringBuffer buffer = new StringBuffer();
+							for(String line: splitted){
+								buffer.append(line);
+								buffer.append("\n");
+							}
 
-						responseJTextArea.setText(String.valueOf(buffer));
-					}
+							responseJTextArea.setText(String.valueOf(buffer));
+						}
+					});
+					newThread.start();
 				}
 			}
 		);
@@ -124,29 +130,32 @@ public class UserClient extends JFrame {
 		getMachineInformationsJButton.addActionListener( new ActionListener() {
 			  public void actionPerformed( ActionEvent event )
 			  {
-				  String message, machineId, response;
-				  String [] splitted;
-				  machineId = machineUniqueIdJTextField.getText();
-				  message = Commands.GET_MACHINE_INFORMATIONS + "*" + machineId;
+				  Thread newThread = new Thread(() -> {
+					  String message, machineId, response;
+					  String [] splitted;
+					  machineId = machineUniqueIdJTextField.getText();
+					  message = Commands.GET_MACHINE_INFORMATIONS + "*" + machineId;
 
-				  response = sendCommand(message, networkInput, networkOutput);
+					  response = sendCommand(message, networkInput, networkOutput);
 
-				  if(response.equals("410")){
-					  responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is one or more missing argument in the command.");
-				  }
-				  else if(response.equals("230")){
-					  responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is no machine with the given id.");
-				  }
-				  else {
-					  splitted = response.split("\\u002A");
-					  StringBuffer buffer = new StringBuffer();
-					  for(String line: splitted){
-						  buffer.append(line);
-						  buffer.append("\n");
+					  if(response.equals("410")){
+						  responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is one or more missing argument in the command.");
 					  }
+					  else if(response.equals("230")){
+						  responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is no machine with the given id.");
+					  }
+					  else {
+						  splitted = response.split("\\u002A");
+						  StringBuffer buffer = new StringBuffer();
+						  for(String line: splitted){
+							  buffer.append(line);
+							  buffer.append("\n");
+						  }
 
-					  responseJTextArea.setText(String.valueOf(buffer));
-				  }
+						  responseJTextArea.setText(String.valueOf(buffer));
+					  }
+				  });
+				  newThread.start();
 			  }
 		  }
 		);
@@ -163,27 +172,30 @@ public class UserClient extends JFrame {
 		sendJobOrderJButton.addActionListener( new ActionListener() {
 				 public void actionPerformed( ActionEvent event )
 				 {
-					 String message, jobId, jobType, jobLength, response;
-					 jobId = jobOrderUniqueIdJTextField.getText();
-					 jobType = jobOrderTypeJTextField.getText();
-					 jobLength = jobOrderProductionLengthJTextField.getText();
+					 Thread newThread = new Thread(() -> {
+						 String message, jobId, jobType, jobLength, response;
+						 jobId = jobOrderUniqueIdJTextField.getText();
+						 jobType = jobOrderTypeJTextField.getText();
+						 jobLength = jobOrderProductionLengthJTextField.getText();
 
-					 message = Commands.SEND_JOB_ORDER  + "*" + jobId + "*" + jobType + "*" + jobLength;
+						 message = Commands.SEND_JOB_ORDER  + "*" + jobId + "*" + jobType + "*" + jobLength;
 
-					 response = sendCommand(message, networkInput, networkOutput);
+						 response = sendCommand(message, networkInput, networkOutput);
 
-					 if(response.equals("410")){
-						 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is one or more missing argument in the command.");
-					 }
-					 else if(response.equals("240")){
-						 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The given job id has already in use.");
-					 }
-					 else if(response.equals("241")){
-						 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The job type does not match with its production metric.");
-					 }
-					 else if(response.equals("140")){
-						 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The job added successfully.");
-					 }
+						 if(response.equals("410")){
+							 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is one or more missing argument in the command.");
+						 }
+						 else if(response.equals("240")){
+							 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The given job id has already in use.");
+						 }
+						 else if(response.equals("241")){
+							 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The job type does not match with its production metric.");
+						 }
+						 else if(response.equals("140")){
+							 responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The job added successfully.");
+						 }
+					 });
+					 newThread.start();
 				 }
 			 }
 		);
@@ -192,37 +204,12 @@ public class UserClient extends JFrame {
 		getPendingJobOrdersJButton.addActionListener( new ActionListener() {
 			  public void actionPerformed( ActionEvent event )
 			  {
-				  String message, response;
-				  String [] splitted;
-				  message = Commands.GET_PENDING_JOB_ORDERS;
+				  Thread newThread = new Thread(() -> {
+					  String message, response;
+					  String [] splitted;
+					  message = Commands.GET_PENDING_JOB_ORDERS;
 
-				  response = sendCommand(message, networkInput, networkOutput);
-				  splitted = response.split("\\u002A");
-				  StringBuffer buffer = new StringBuffer();
-				  for(String line: splitted){
-					  buffer.append(line);
-					  buffer.append("\n");
-				  }
-
-				  responseJTextArea.setText(String.valueOf(buffer));
-			  }
-		  }
-		);
-		commandButtonsPanel.add( getPendingJobOrdersJButton );
-
-		getMachineStatesJButton.addActionListener( new ActionListener() {
-			  public void actionPerformed( ActionEvent event )
-			  {
-				  String message, response;
-				  String [] splitted;
-				  message = Commands.GET_MACHINE_STATES;
-
-				  response = sendCommand(message, networkInput, networkOutput);
-
-				  if(response.equals("220")){
-					  responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The machine list is empty.");
-				  }
-				  else {
+					  response = sendCommand(message, networkInput, networkOutput);
 					  splitted = response.split("\\u002A");
 					  StringBuffer buffer = new StringBuffer();
 					  for(String line: splitted){
@@ -231,7 +218,38 @@ public class UserClient extends JFrame {
 					  }
 
 					  responseJTextArea.setText(String.valueOf(buffer));
-				  }
+				  });
+				  newThread.start();
+			  }
+		  }
+		);
+		commandButtonsPanel.add( getPendingJobOrdersJButton );
+
+		getMachineStatesJButton.addActionListener( new ActionListener() {
+			  public void actionPerformed( ActionEvent event )
+			  {
+				  Thread newThread = new Thread(() -> {
+					  String message, response;
+					  String [] splitted;
+					  message = Commands.GET_MACHINE_STATES;
+
+					  response = sendCommand(message, networkInput, networkOutput);
+
+					  if(response.equals("220")){
+						  responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The machine list is empty.");
+					  }
+					  else {
+						  splitted = response.split("\\u002A");
+						  StringBuffer buffer = new StringBuffer();
+						  for(String line: splitted){
+							  buffer.append(line);
+							  buffer.append("\n");
+						  }
+
+						  responseJTextArea.setText(String.valueOf(buffer));
+					  }
+				  });
+				  newThread.start();
 			  }
 		  }
 		);
@@ -240,28 +258,31 @@ public class UserClient extends JFrame {
 		getProcessingJobOrdersInMachinesStatesJButton.addActionListener( new ActionListener() {
 			   public void actionPerformed( ActionEvent event )
 			   {
-				   String message, response;
-				   String [] splitted;
-				   message = Commands.GET_PROCESSING_JOB_ORDERS;
+				   Thread newThread = new Thread(() -> {
+					   String message, response;
+					   String [] splitted;
+					   message = Commands.GET_PROCESSING_JOB_ORDERS;
 
-				   response = sendCommand(message, networkInput, networkOutput);
+					   response = sendCommand(message, networkInput, networkOutput);
 
-				   if(response.equals("220")){
-					   responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The machine list is empty.");
-				   }
-				   else if(response.equals("250")){
-					   responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is no busy machine.");
-				   }
-				   else {
-					   splitted = response.split("\\u002A");
-					   StringBuffer buffer = new StringBuffer();
-					   for(String line: splitted){
-						   buffer.append(line);
-						   buffer.append("\n");
+					   if(response.equals("220")){
+						   responseJTextArea.setText("Response Code: " + response + "\nResponse Message: The machine list is empty.");
 					   }
+					   else if(response.equals("250")){
+						   responseJTextArea.setText("Response Code: " + response + "\nResponse Message: There is no busy machine.");
+					   }
+					   else {
+						   splitted = response.split("\\u002A");
+						   StringBuffer buffer = new StringBuffer();
+						   for(String line: splitted){
+							   buffer.append(line);
+							   buffer.append("\n");
+						   }
 
-					   responseJTextArea.setText(String.valueOf(buffer));
-				   }
+						   responseJTextArea.setText(String.valueOf(buffer));
+					   }
+				   });
+				   newThread.start();
 			   }
 		   }
 		);

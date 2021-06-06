@@ -1,4 +1,4 @@
-class Job {
+public class Job {
     int JobUniqueId;
     String JobType;
     String JobLength;

@@ -1,4 +1,4 @@
-class Machine {
+public class Machine {
     static final String MACHINE_STATE_BUSY = "BUSY";
     static final String MACHINE_STATE_EMPTY = "EMPTY";
 
