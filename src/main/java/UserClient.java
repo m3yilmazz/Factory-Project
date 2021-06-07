@@ -1,9 +1,14 @@
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -11,12 +16,17 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
-public class UserClient extends JFrame {
+public class UserClient extends JFrame implements WindowListener {
 	private static InetAddress host;
 	private static final int PORT = 9999;
 	static Socket socket = null;
 	static Scanner networkInput;
 	static PrintWriter networkOutput;
+
+	private static String UserName = null, UserPassword = null;
+
+	private static GsonBuilder gsonBuilder = new GsonBuilder();
+	private static Gson gson = gsonBuilder.serializeNulls().create();
 
 	private final JPanel userPropsPanel = new JPanel( new GridLayout( 2, 2, 5, 5 ) );
 	private final JPanel buttonAndResponseCodePanel = new JPanel( new GridLayout( 2, 1, 5, 5 ) );
@@ -45,7 +55,7 @@ public class UserClient extends JFrame {
 
 	private final JTextArea responseJTextArea = new JTextArea();
 
-	UserClient(Scanner networkInput, PrintWriter networkOutput){
+	UserClient(Scanner networkInput, PrintWriter networkOutput, Gson gson){
 		super( "User Client" );
 		setLayout( new GridLayout( 2, 1, 10, 10 ) );
 
@@ -57,12 +67,14 @@ public class UserClient extends JFrame {
 				public void actionPerformed( ActionEvent event )
 				{
 					Thread newThread = new Thread(() -> {
-						String message, userName, userPassword, response;
+						String message, userName, userPassword, arguments, response;
 
 						userName = userNameJTextField.getText();
 						userPassword = userPasswordJTextField.getText();
 
-						message = "LOGIN" + "*" + userName + "*" + userPassword;
+						arguments = gson.toJson(new LoginRequest(userName, userPassword));
+
+						message = "LOGIN" + "*" + arguments;
 
 						response = sendCommand(message, networkInput, networkOutput);
 
@@ -73,10 +85,15 @@ public class UserClient extends JFrame {
 							loginResponseJTextArea.setText("Response Code: 200 \nResponse Message: The username or password is wrong.");
 						}
 						else if(response.equals("100")){
+							UserName = userName;
+							UserPassword = userPassword;
+
 							remove( userPropsPanel );
 							remove( buttonAndResponseCodePanel );
+
 							setLayout( new GridLayout( 1, 2, 10, 10 ) );
 							setSize( 1000, 900 );
+
 							add(commandButtonsPanel);
 							add(responseJPanel);
 						}
@@ -297,6 +314,7 @@ public class UserClient extends JFrame {
 		add( buttonAndResponseCodePanel );
 		setSize( 400, 300 );
 		setVisible( true );
+		addWindowListener(this);
 	}
 	
 	public static void main(String[] args)
@@ -320,8 +338,8 @@ public class UserClient extends JFrame {
 			System.out.println("\nHost ID not found!\n");
 			System.exit(1);
 		}
-		UserClient userClient = new UserClient(networkInput, networkOutput);
-		userClient.setDefaultCloseOperation( EXIT_ON_CLOSE );
+		UserClient userClient = new UserClient(networkInput, networkOutput, gson);
+		//userClient.setDefaultCloseOperation( EXIT_ON_CLOSE );
 	}
 
 	private static String sendCommand(String message, Scanner networkInput, PrintWriter networkOutput)
@@ -331,5 +349,44 @@ public class UserClient extends JFrame {
 		responseCode = networkInput.nextLine();
 		return  responseCode;
 	}
+
+	@Override
+	public void windowOpened(WindowEvent e) { }
+
+	@Override
+	public void windowClosing(WindowEvent e) {
+		Thread newThread = new Thread(() -> {
+			String message, arguments, response;
+
+			arguments = gson.toJson(new LoginRequest(UserName, UserPassword));
+
+			message = Commands.LOGOFF + "*" + arguments;
+
+			response = sendCommand(message, networkInput, networkOutput);
+
+			if(response.equals("101")){
+				System.out.println("Response: " + response);
+				sendCommand(Commands.EXIT, networkInput, networkOutput);
+				System.exit(1);
+			}
+			else {
+				System.out.println("Response: " + response);
+				sendCommand(Commands.EXIT, networkInput, networkOutput);
+				System.exit(0);
+			}
+		});
+		newThread.start();
+	}
+
+	@Override
+	public void windowClosed(WindowEvent e) { }
+	@Override
+	public void windowIconified(WindowEvent e) { }
+	@Override
+	public void windowDeiconified(WindowEvent e) { }
+	@Override
+	public void windowActivated(WindowEvent e) { }
+	@Override
+	public void windowDeactivated(WindowEvent e) { }
 }
 

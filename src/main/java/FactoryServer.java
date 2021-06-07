@@ -1,5 +1,8 @@
+import com.google.gson.*;
+
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Type;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -12,14 +15,24 @@ public class FactoryServer
 	private static final int PORT = 9999;
 	private static ArrayList<Machine> machines = new ArrayList<Machine>();
 	private static ArrayList<Job> jobs = new ArrayList<Job>();
+	private static ArrayList<User> users = new ArrayList<User>();
 	private static ExecutorService executorService = Executors.newCachedThreadPool();
 	private static CustomMap sharedLocation = new SynchedCustomMap();
 
+	static Map<String, String> USERNAME_PASSWORD_MAP = new HashMap<String, String>();
+
+	private static GsonBuilder gsonBuilder = new GsonBuilder();
+	private static Gson gson = gsonBuilder.create();
+
 	public static void main(String[] args) throws IOException
 	{
-		User.USERNAME_PASSWORD_MAP.put("admin", "admin");
-		User.USERNAME_PASSWORD_MAP.put("admin1", "admin1");
-		User.USERNAME_PASSWORD_MAP.put("admin2", "admin2");
+		users.add(new User("admin", "admin"));
+		users.add(new User("admin1", "admin1"));
+		users.add(new User("admin2", "admin2"));
+
+		USERNAME_PASSWORD_MAP.put("admin", "admin");
+		USERNAME_PASSWORD_MAP.put("admin1", "admin1");
+		USERNAME_PASSWORD_MAP.put("admin2", "admin2");
 
 		JobTypes.METRICS.put(JobTypes.CNC, JobTypes.CNC_METRIC);
 		JobTypes.METRICS.put(JobTypes.DOKUM, JobTypes.DOKUM_METRIC);
@@ -41,7 +54,7 @@ public class FactoryServer
 			Socket client = serverSocket.accept();
 			System.out.println("\nNew client accepted.\n");
 
-			ClientHandler handler = new ClientHandler(client, machines, jobs, executorService, sharedLocation);
+			ClientHandler handler = new ClientHandler(client, machines, jobs, users, executorService, sharedLocation, gson);
 
 			handler.start();
 		}while (true);
@@ -55,16 +68,20 @@ class ClientHandler extends Thread
 	private PrintWriter output;
 	private ArrayList<Machine> machines;
 	private ArrayList<Job> jobs;
+	private ArrayList<User> users;
 	private ExecutorService executorService;
 	private CustomMap sharedLocation;
+	private Gson gson;
 
-	public ClientHandler(Socket socket, ArrayList<Machine> machines, ArrayList<Job> jobs, ExecutorService executorService, CustomMap sharedLocation)
+	public ClientHandler(Socket socket, ArrayList<Machine> machines, ArrayList<Job> jobs, ArrayList<User> users, ExecutorService executorService, CustomMap sharedLocation, Gson gson)
 	{
 		client = socket;
 		this.machines = machines;
 		this.jobs = jobs;
+		this.users = users;
 		this.executorService = executorService;
 		this.sharedLocation = sharedLocation;
+		this.gson = gson;
 
 		try
 		{
@@ -78,9 +95,9 @@ class ClientHandler extends Thread
 	}
 
 	public void run() {
-		String received;
-		String command;
+		String received, command, argumentsJsonString;
 		StringBuffer stringBuffer;
+
 		do {
 			received = input.nextLine();
 			String[] splittedReceived = received.split("\\u002A");
@@ -91,25 +108,94 @@ class ClientHandler extends Thread
 			String machineIdString, machineName, machineType ,machineProductionSpeed, metric;
 			String jobIdString, jobType, jobLength;
 			int machineId;
+			User receivedUser = new User(null, null);
 
 			switch (command) {
 				case Commands.LOGIN:
 					try{
-						userName = splittedReceived[1];
-						userPassword = splittedReceived[2];
+						argumentsJsonString = splittedReceived[1];
+
+						try{
+							receivedUser = gson.fromJson(argumentsJsonString, User.class);
+						}
+						catch (JsonParseException e){
+							output.println(410);
+							break;
+						}
 					}
 					catch (ArrayIndexOutOfBoundsException e){
 						output.println(410);
 						break;
 					}
 
-					if(userPassword.equals(User.USERNAME_PASSWORD_MAP.get(userName))){
-						output.println(100);
+					if(receivedUser.UserName.isEmpty() || receivedUser.UserPassword.isEmpty()){
+						output.println(410);
+						break;
 					}
-					else {
-						output.println(200);
+
+					for(User user: users){
+						if(receivedUser.UserName.equals(user.UserName)){
+							if(user.UserStatus.equals(User.ONLINE)){
+								output.println(201);
+								break;
+							}
+							else {
+								if(receivedUser.UserPassword.equals(user.UserPassword)){
+									user.UserStatus = User.ONLINE;
+									output.println(100);
+									break;
+								}
+								else {
+									output.println(200);
+									break;
+								}
+							}
+						}
 					}
-					
+
+					output.println(200);
+					break;
+				case Commands.LOGOFF:
+					try{
+						argumentsJsonString = splittedReceived[1];
+
+						try{
+							receivedUser = gson.fromJson(argumentsJsonString, User.class);
+						}
+						catch (JsonParseException e){
+							output.println(410);
+							break;
+						}
+					}
+					catch (ArrayIndexOutOfBoundsException e){
+						output.println(410);
+						break;
+					}
+
+					try{
+						if(receivedUser.UserName.isBlank() || receivedUser.UserPassword.isBlank()){
+							output.println(410);
+							break;
+						}
+					}
+					catch (NullPointerException e){
+						output.println(410);
+						break;
+					}
+
+					for(User user: users){
+						if(receivedUser.UserName.equals(user.UserName)){
+							if(receivedUser.UserPassword.equals(user.UserPassword)){
+								if(user.UserStatus.equals(User.ONLINE)){
+									user.UserStatus = User.OFFLINE;
+									output.println("101");
+									break;
+								}
+							}
+						}
+					}
+
+					output.println(202);
 					break;
 
 				case Commands.ADD_MACHINE:
@@ -463,7 +549,7 @@ class ClientHandler extends Thread
 					output.println(400);
 					break;
 			}
-		} while (!received.equals("QUIT"));
+		} while (!received.equals("EXIT"));
 
 		try {
 			if (client != null) {
