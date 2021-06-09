@@ -47,7 +47,7 @@ public class MachineClient extends JFrame {
 				public void actionPerformed( ActionEvent event )
 				{
 					Thread newThread = new Thread(() -> {
-						String message, machineIdString, machineName, machineType ,machineProductionSpeed, arguments, responseCode;
+						String message, machineIdString, machineName, machineType ,machineProductionSpeed, arguments;
 
 						machineIdString = machineUniqueIdJTextField.getText();
 						machineName = machineNameJTextField.getText();
@@ -56,25 +56,10 @@ public class MachineClient extends JFrame {
 
 						arguments = gson.toJson(new AddMachineRequest(Integer.parseInt(machineIdString), machineName, machineType, machineProductionSpeed));
 
-						message = "ADD" + "*" + arguments;
+						message = Commands.ADD_MACHINE + "*" + arguments;
 
-						responseCode = sendCommand(message, networkInput, networkOutput);
-
-						if(responseCode.equals("410")){
-							responseJTextArea.setText("Response Code: " + responseCode + "\nResponse Message: There is one or more missing argument in the command.");
-						}
-						else if(responseCode.equals("210")){
-							responseJTextArea.setText("Response Code: " + responseCode + "\nResponse Message: The given machine id has already in use.");
-						}
-						else if(responseCode.equals("211")){
-							responseJTextArea.setText("Response Code: " + responseCode + "\nResponse Message: The machine type is not valid.");
-						}
-						else if(responseCode.equals("212")){
-							responseJTextArea.setText("Response Code: " + responseCode + "\nResponse Message: The machine type does not match with its production metric.");
-						}
-						else if(responseCode.equals("110")){
-							responseJTextArea.setText("Response Code: " + responseCode + "\nResponse Message: The machine added successfully.");
-						}
+						CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
+						commandSender.execute();
 					});
 					newThread.start();
 				}

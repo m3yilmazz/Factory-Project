@@ -99,7 +99,13 @@ class ClientHandler extends Thread
 		StringBuffer stringBuffer;
 
 		do {
-			received = input.nextLine();
+			try{
+				received = input.nextLine();
+			}
+			catch (NoSuchElementException e){
+				break;
+			}
+
 			String[] splittedReceived = received.split("\\u002A");
 
 			command = splittedReceived[0];
@@ -132,6 +138,7 @@ class ClientHandler extends Thread
 						break;
 					}
 
+					boolean isUserNameOrPasswordIsWrong = true;
 					for(User user: users){
 						if(receivedUser.UserName.equals(user.UserName)){
 							if(user.UserStatus.equals(User.ONLINE)){
@@ -142,6 +149,7 @@ class ClientHandler extends Thread
 								if(receivedUser.UserPassword.equals(user.UserPassword)){
 									user.UserStatus = User.ONLINE;
 									output.println(100);
+									isUserNameOrPasswordIsWrong = false;
 									break;
 								}
 								else {
@@ -151,8 +159,10 @@ class ClientHandler extends Thread
 							}
 						}
 					}
-
-					output.println(200);
+					if(isUserNameOrPasswordIsWrong){
+						output.println(200);
+						break;
+					}
 					break;
 
 				case Commands.LOGOFF:
@@ -262,11 +272,11 @@ class ClientHandler extends Thread
 							output.println(110);
 
 							System.out.println(
-								"Added Machine:" +
-								" Machine Unique Id: " + receivedMachine.MachineUniqueId +
-								" Machine Name: " + receivedMachine.MachineUniqueId +
-								" Machine Production Speed: " + receivedMachine.MachineUniqueId +
-								" Machine State: " + receivedMachine.MachineUniqueId
+								"Added Machine: " +
+								"Machine Unique Id: " + receivedMachine.MachineUniqueId + ", " +
+								"Machine Name: " + receivedMachine.MachineUniqueId + ", " +
+								"Machine Production Speed: " + receivedMachine.MachineUniqueId + ", " +
+								"Machine State: " + receivedMachine.MachineUniqueId
 							);
 
 							assignJobToMachine();
@@ -339,19 +349,27 @@ class ClientHandler extends Thread
 					break;
 
 				case Commands.GET_MACHINE_INFORMATIONS:
-					try {
-						machineIdString = splittedReceived[1];
+					GetMachineInformationsRequest receivedMachineId;
+					try{
+						argumentsJsonString = splittedReceived[1];
+
+						try{
+							receivedMachineId = gson.fromJson(argumentsJsonString, GetMachineInformationsRequest.class);
+						}
+						catch (JsonParseException e){
+							output.println(410);
+							break;
+						}
 					}
 					catch (ArrayIndexOutOfBoundsException e){
 						output.println(410);
 						break;
 					}
 
-					int uniqueId = Integer.parseInt(machineIdString);
 					stringBuffer = new StringBuffer();
 
 					for(Machine machine: machines){
-						if(machine.MachineUniqueId == uniqueId){
+						if(machine.MachineUniqueId == receivedMachineId.MachineId){
 							stringBuffer.append(
 									"Machine Unique Id: " + machine.MachineUniqueId + "*" +
 									"Machine Name: " + machine.MachineName + "*" +
@@ -368,7 +386,7 @@ class ClientHandler extends Thread
 					else {
 						try {
 							stringBuffer.append("JOBS DONE BY THAT MACHINE" + "**");
-							List<Integer> jobList = sharedLocation.get(uniqueId);
+							List<Integer> jobList = sharedLocation.get(receivedMachineId.MachineId);
 
 							if(jobList == null){
 								stringBuffer.append("NONE" + "**");
@@ -381,9 +399,9 @@ class ClientHandler extends Thread
 									if(job.JobUniqueId == jobId){
 										if(job.JobState.equals(Job.JOB_STATE_DONE)){
 											stringBuffer.append(
-													"Job Unique Id: " + job.JobUniqueId + "*" +
-													"Job Type: " + job.JobType + "*" +
-													"Job Length: " + job.JobLength + "**"
+												"Job Unique Id: " + job.JobUniqueId + "*" +
+												"Job Type: " + job.JobType + "*" +
+												"Job Length: " + job.JobLength + "**"
 											);
 										}
 									}
@@ -397,43 +415,81 @@ class ClientHandler extends Thread
 					break;
 
 				case Commands.SEND_JOB_ORDER:
-					Job newJob = new Job();
+					Job receivedJob = new Job(0, null, null);
+					boolean isJobIdAlreadyExist = false;
 
 					try{
-						jobIdString = splittedReceived[1];
-						jobType = splittedReceived[2];
-						jobLength = splittedReceived[3];
+						argumentsJsonString = splittedReceived[1];
+
+						try{
+							receivedJob = gson.fromJson(argumentsJsonString, Job.class);
+							receivedJob.JobState = Job.JOB_STATE_PENDING;
+						}
+						catch (JsonParseException e){
+							output.println(410);
+							break;
+						}
 					}
 					catch (ArrayIndexOutOfBoundsException e){
 						output.println(410);
 						break;
 					}
 
-					int jobId = Integer.parseInt(jobIdString);
+					try{
+						if( receivedJob.JobUniqueId == 0 ||
+							receivedJob.JobType.isEmpty() ||
+							receivedJob.JobLength.isEmpty())
+						{
+							output.println(410);
+							break;
+						}
+					}
+					catch (NullPointerException e){
+						output.println(410);
+						break;
+					}
 
-					boolean jobIdIsAlreadyExist = false;
 					for(Job job: jobs){
-						if(job.JobUniqueId == jobId){
-							jobIdIsAlreadyExist = true;
+						if(job.JobUniqueId == receivedJob.JobUniqueId){
+							isJobIdAlreadyExist = true;
 							break;
 						}
 					}
 
-					if(jobIdIsAlreadyExist) {
+					if(isJobIdAlreadyExist) {
 						output.println(240);
 						break;
 					}
 					else {
-						newJob.JobUniqueId = jobId;
-						newJob.JobType = jobType;
-						newJob.JobLength = jobLength;
-						newJob.JobState = Job.JOB_STATE_PENDING;
+						if( !(  receivedJob.JobType.equals(JobTypes.CNC) ||
+								receivedJob.JobType.equals(JobTypes.DOKUM) ||
+								receivedJob.JobType.equals(JobTypes.KILIF) ||
+								receivedJob.JobType.equals(JobTypes.KAPLAMA)))
+						{
+							output.println(241);
+							break;
+						}
 
-						jobs.add(newJob);
+						metric = receivedJob.JobLength.split(" ")[1];
+						if(metric.equals(JobTypes.METRICS.get(receivedJob.JobType))){
+							jobs.add(receivedJob);
 
-						output.println(140);
+							output.println(140);
 
-						assignJobToMachine();
+							System.out.println(
+								"Added Job: " +
+								"Job Unique Id: " + receivedJob.JobUniqueId + ", " +
+								"Job Type: " + receivedJob.JobType + ", " +
+								"Job Length: " + receivedJob.JobLength + ", " +
+								"Job State: " + receivedJob.JobState
+							);
+
+							assignJobToMachine();
+						}
+						else {
+							output.println(242);
+							break;
+						}
 					}
 					break;
 
