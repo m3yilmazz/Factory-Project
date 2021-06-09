@@ -5,10 +5,7 @@ import javax.swing.*;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+import java.awt.event.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -16,14 +13,14 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
-public class UserClient extends JFrame implements WindowListener {
+public class UserClient extends JFrame implements WindowListener, KeyListener {
 	private static InetAddress host;
 	private static final int PORT = 9999;
 	static Socket socket = null;
 	static Scanner networkInput;
 	static PrintWriter networkOutput;
 
-	private String UserName = null, UserPassword = null;
+	private static String UserName = null, UserPassword = null;
 
 	private static GsonBuilder gsonBuilder = new GsonBuilder();
 	private static Gson gson = gsonBuilder.serializeNulls().create();
@@ -75,16 +72,15 @@ public class UserClient extends JFrame implements WindowListener {
 					userName = userNameJTextField.getText();
 					userPassword = userPasswordJTextField.getText();
 
+					UserName = userName;
+					UserPassword = userPassword;
+
 					arguments = gson.toJson(new LoginRequest(userName, userPassword));
 
 					message = Commands.LOGIN + "*" + arguments;
 
 					LoginCommandSender loginCommandSender = new LoginCommandSender(
 							message,
-							userName,
-							UserName,
-							userPassword,
-							UserPassword,
 							networkInput,
 							networkOutput,
 							loginResponseJTextArea,
@@ -100,7 +96,7 @@ public class UserClient extends JFrame implements WindowListener {
 				}
 			}
 		);
-
+		loginJButton.addKeyListener(this);
 		buttonAndResponseCodePanel.add( loginJButton );
 		JScrollPane loginResponseJScrollPane = new JScrollPane(loginResponseJTextArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 		buttonAndResponseCodePanel.add( loginResponseJScrollPane );
@@ -196,7 +192,7 @@ public class UserClient extends JFrame implements WindowListener {
 				  responseJTextArea.setText("Fetching data...");
 
 				  CommandSender commandSender = new CommandSender(Commands.GET_PENDING_JOB_ORDERS, networkInput, networkOutput, responseJTextArea);
-			  	commandSender.execute();
+				  commandSender.execute();
 			  }
 		  }
 		);
@@ -309,5 +305,18 @@ public class UserClient extends JFrame implements WindowListener {
 	public void windowActivated(WindowEvent e) { }
 	@Override
 	public void windowDeactivated(WindowEvent e) { }
+
+	@Override
+	public void keyTyped(KeyEvent e) { }
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+		if(e.getKeyCode() == 10){
+			loginJButton.doClick();
+		}
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) { }
 }
 

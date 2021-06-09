@@ -5,6 +5,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -12,7 +14,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
-public class MachineClient extends JFrame {
+public class MachineClient extends JFrame implements KeyListener {
 	private static InetAddress host;
 	private static final int PORT = 9999;
 	static Socket socket = null;
@@ -46,26 +48,23 @@ public class MachineClient extends JFrame {
 		addMachineJButton.addActionListener( new ActionListener() {
 				public void actionPerformed( ActionEvent event )
 				{
-					Thread newThread = new Thread(() -> {
-						String message, machineIdString, machineName, machineType ,machineProductionSpeed, arguments;
+					String message, machineIdString, machineName, machineType ,machineProductionSpeed, arguments;
 
-						machineIdString = machineUniqueIdJTextField.getText();
-						machineName = machineNameJTextField.getText();
-						machineType = machineTypeJTextField.getText();
-						machineProductionSpeed = machineProductionSpeedJTextField.getText();
+					machineIdString = machineUniqueIdJTextField.getText();
+					machineName = machineNameJTextField.getText();
+					machineType = machineTypeJTextField.getText();
+					machineProductionSpeed = machineProductionSpeedJTextField.getText();
 
-						arguments = gson.toJson(new AddMachineRequest(Integer.parseInt(machineIdString), machineName, machineType, machineProductionSpeed));
+					arguments = gson.toJson(new AddMachineRequest(Integer.parseInt(machineIdString), machineName, machineType, machineProductionSpeed));
 
-						message = Commands.ADD_MACHINE + "*" + arguments;
+					message = Commands.ADD_MACHINE + "*" + arguments;
 
-						CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
-						commandSender.execute();
-					});
-					newThread.start();
+					CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
+					commandSender.execute();
 				}
 			}
 		);
-
+		addMachineJButton.addKeyListener(this);
 		buttonAndResponseCodePanel.add( addMachineJButton );
 		buttonAndResponseCodePanel.add( responseJTextArea );
 
@@ -100,12 +99,15 @@ public class MachineClient extends JFrame {
 		machineClient.setDefaultCloseOperation( EXIT_ON_CLOSE );
 	}
 
-	private static String sendCommand(String message, Scanner networkInput, PrintWriter networkOutput)
-	{
-		String responseCode;
-		networkOutput.println(message);
-		responseCode = networkInput.nextLine();
-		return  responseCode;
+	@Override
+	public void keyPressed(KeyEvent e) {
+		if(e.getKeyCode() == 10){
+			addMachineJButton.doClick();
+		}
 	}
+	@Override
+	public void keyTyped(KeyEvent e) { }
+	@Override
+	public void keyReleased(KeyEvent e) { }
 }
 

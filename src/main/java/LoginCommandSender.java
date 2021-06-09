@@ -6,10 +6,6 @@ import java.util.concurrent.ExecutionException;
 
 public class LoginCommandSender extends SwingWorker<String, Object> {
     private final String message;
-    private final String sourceUserName;
-    private String destinationUserName;
-    private final String sourceUserPassword;
-    private String destinationUserPassword;
     private final Scanner networkInput;
     private final PrintWriter networkOutput;
     private final JTextArea loginResponseJTextArea;
@@ -23,10 +19,6 @@ public class LoginCommandSender extends SwingWorker<String, Object> {
 
     LoginCommandSender(
             String message,
-            String sourceUserName,
-            String destinationUserName,
-            String sourceUserPassword,
-            String destinationUserPassword,
             Scanner networkInput,
             PrintWriter networkOutput,
             JTextArea loginResponseJTextArea,
@@ -39,10 +31,6 @@ public class LoginCommandSender extends SwingWorker<String, Object> {
             JPanel responseJPanel)
     {
         this.message = message;
-        this.sourceUserName = sourceUserName;
-        this.destinationUserName = destinationUserName;
-        this.sourceUserPassword = sourceUserPassword;
-        this.destinationUserPassword = destinationUserPassword;
         this.networkInput = networkInput;
         this.networkOutput = networkOutput;
         this.loginResponseJTextArea = loginResponseJTextArea;
@@ -76,9 +64,6 @@ public class LoginCommandSender extends SwingWorker<String, Object> {
                 loginResponseJTextArea.setText("Response Code: 200 \nResponse Message: The username or password is wrong.");
             }
             else if(response.equals("100")){
-                destinationUserName = sourceUserName;
-                destinationUserPassword = sourceUserPassword;
-
                 jFrame.remove(userPropsPanel);
                 jFrame.remove(buttonAndResponseCodePanel);
 

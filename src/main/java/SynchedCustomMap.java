@@ -18,7 +18,7 @@ public class SynchedCustomMap implements CustomMap {
 
       try
       {
-         Thread.sleep(1000 * 10);
+         Thread.sleep(1000 * 5);
          ArrayList<Integer> jobList = new ArrayList<Integer>() ;
          jobList = jobAssignment.get(machineId) == null ? new ArrayList<Integer>() : jobAssignment.get(machineId);
          jobList.add(jobId);

@@ -23,6 +23,7 @@ public class FactoryServer
 
 	private static GsonBuilder gsonBuilder = new GsonBuilder();
 	private static Gson gson = gsonBuilder.create();
+	private static Gson prettyGson = gsonBuilder.setPrettyPrinting().create();
 
 	public static void main(String[] args) throws IOException
 	{
@@ -54,7 +55,7 @@ public class FactoryServer
 			Socket client = serverSocket.accept();
 			System.out.println("\nNew client accepted.\n");
 
-			ClientHandler handler = new ClientHandler(client, machines, jobs, users, executorService, sharedLocation, gson);
+			ClientHandler handler = new ClientHandler(client, machines, jobs, users, executorService, sharedLocation, gson, prettyGson);
 
 			handler.start();
 		}while (true);
@@ -72,8 +73,9 @@ class ClientHandler extends Thread
 	private ExecutorService executorService;
 	private CustomMap sharedLocation;
 	private Gson gson;
+	private Gson prettyGson;
 
-	public ClientHandler(Socket socket, ArrayList<Machine> machines, ArrayList<Job> jobs, ArrayList<User> users, ExecutorService executorService, CustomMap sharedLocation, Gson gson)
+	public ClientHandler(Socket socket, ArrayList<Machine> machines, ArrayList<Job> jobs, ArrayList<User> users, ExecutorService executorService, CustomMap sharedLocation, Gson gson, Gson prettyGson)
 	{
 		client = socket;
 		this.machines = machines;
@@ -82,6 +84,7 @@ class ClientHandler extends Thread
 		this.executorService = executorService;
 		this.sharedLocation = sharedLocation;
 		this.gson = gson;
+		this.prettyGson = prettyGson;
 
 		try
 		{
@@ -110,9 +113,8 @@ class ClientHandler extends Thread
 
 			command = splittedReceived[0];
 
-			String machineIdString, metric;
-			String jobIdString, jobType, jobLength;
-			User receivedUser = new User(null, null);
+			String metric;
+			User receivedUser;
 
 			switch (command) {
 				case Commands.LOGIN:
@@ -150,6 +152,7 @@ class ClientHandler extends Thread
 									user.UserStatus = User.ONLINE;
 									output.println(100);
 									isUserNameOrPasswordIsWrong = false;
+									System.out.println(user.UserName + " has logged in.");
 									break;
 								}
 								else {
@@ -198,7 +201,8 @@ class ClientHandler extends Thread
 							if(receivedUser.UserPassword.equals(user.UserPassword)){
 								if(user.UserStatus.equals(User.ONLINE)){
 									user.UserStatus = User.OFFLINE;
-									output.println("101");
+									output.println(101);
+									System.out.println(user.UserName + " has logged off.");
 									break;
 								}
 							}
@@ -209,7 +213,7 @@ class ClientHandler extends Thread
 					break;
 
 				case Commands.ADD_MACHINE:
-					Machine receivedMachine = new Machine(0, null, null, null);
+					Machine receivedMachine;
 					boolean machineIdIsAlreadyExist = false;
 
 					try{
@@ -274,9 +278,10 @@ class ClientHandler extends Thread
 							System.out.println(
 								"Added Machine: " +
 								"Machine Unique Id: " + receivedMachine.MachineUniqueId + ", " +
-								"Machine Name: " + receivedMachine.MachineUniqueId + ", " +
-								"Machine Production Speed: " + receivedMachine.MachineUniqueId + ", " +
-								"Machine State: " + receivedMachine.MachineUniqueId
+								"Machine Name: " + receivedMachine.MachineName + ", " +
+								"Machine Type: " + receivedMachine.MachineType + ", " +
+								"Machine Production Speed: " + receivedMachine.MachineProductionSpeed + ", " +
+								"Machine State: " + receivedMachine.MachineState
 							);
 
 							assignJobToMachine();
@@ -289,59 +294,32 @@ class ClientHandler extends Thread
 					break;
 
 				case Commands.GET_MACHINES:
-					stringBuffer = new StringBuffer();
+					GetMachinesResponse getMachinesResponse = new GetMachinesResponse();
 					if(!machines.isEmpty()){
-						stringBuffer.append("MACHINES ORDERED BY TYPES" + "**");
-
-						stringBuffer.append(JobTypes.CNC + " MACHINES " + "**");
 						for(Machine machine: machines){
 							if (machine.MachineType.equals(JobTypes.CNC)) {
-								stringBuffer.append(
-										"Machine Unique Id: " + machine.MachineUniqueId + "*" +
-										"Machine Name: " + machine.MachineName + "*" +
-										"Machine Production Speed: " + machine.MachineProductionSpeed + "*" +
-										"Machine State: " + machine.MachineState + "**"
-								);
+								getMachinesResponse.CNC_MACHINES.add(machine);
 							}
 						}
 
-						stringBuffer.append(JobTypes.DOKUM + " MACHINES " + "**");
 						for(Machine machine: machines){
 							if (machine.MachineType.equals(JobTypes.DOKUM)) {
-								stringBuffer.append(
-										"Machine Unique Id: " + machine.MachineUniqueId + "*" +
-										"Machine Name: " + machine.MachineName + "*" +
-										"Machine Production Speed: " + machine.MachineProductionSpeed + "*" +
-										"Machine State: " + machine.MachineState + "**"
-								);
+								getMachinesResponse.DOKUM_MACHINES.add(machine);
 							}
 						}
 
-						stringBuffer.append(JobTypes.KILIF + " MACHINES " + "**");
 						for(Machine machine: machines){
 							if (machine.MachineType.equals(JobTypes.KILIF)) {
-								stringBuffer.append(
-										"Machine Unique Id: " + machine.MachineUniqueId + "*" +
-										"Machine Name: " + machine.MachineName + "*" +
-										"Machine Production Speed: " + machine.MachineProductionSpeed + "*" +
-										"Machine State: " + machine.MachineState + "**"
-								);
+								getMachinesResponse.KILIF_MACHINES.add(machine);
 							}
 						}
 
-						stringBuffer.append(JobTypes.KAPLAMA + " MACHINES " + "**");
 						for(Machine machine: machines){
 							if (machine.MachineType.equals(JobTypes.KAPLAMA)) {
-								stringBuffer.append(
-										"Machine Unique Id: " + machine.MachineUniqueId + "*" +
-										"Machine Name: " + machine.MachineName + "*" +
-										"Machine Production Speed: " + machine.MachineProductionSpeed + "*" +
-										"Machine State: " + machine.MachineState + "**"
-								);
+								getMachinesResponse.KAPLAMA_MACHINES.add(machine);
 							}
 						}
-
-						output.println(stringBuffer);
+						output.println(gson.toJson(getMachinesResponse));
 					}
 					else {
 						output.println(220);
@@ -350,6 +328,7 @@ class ClientHandler extends Thread
 
 				case Commands.GET_MACHINE_INFORMATIONS:
 					GetMachineInformationsRequest receivedMachineId;
+					GetMachineInformationResponse getMachineInformationResponse = new GetMachineInformationResponse();
 					try{
 						argumentsJsonString = splittedReceived[1];
 
@@ -366,43 +345,28 @@ class ClientHandler extends Thread
 						break;
 					}
 
-					stringBuffer = new StringBuffer();
-
 					for(Machine machine: machines){
 						if(machine.MachineUniqueId == receivedMachineId.MachineId){
-							stringBuffer.append(
-									"Machine Unique Id: " + machine.MachineUniqueId + "*" +
-									"Machine Name: " + machine.MachineName + "*" +
-									"Machine Production Speed: " + machine.MachineProductionSpeed + "*" +
-									"Machine State: " + machine.MachineState + "**"
-							);
+							getMachineInformationResponse.MACHINE = machine;
 							break;
 						}
 					}
-					if(stringBuffer.isEmpty()){
+					if(getMachineInformationResponse.MACHINE == null){
 						output.println(230);
 						break;
 					}
 					else {
 						try {
-							stringBuffer.append("JOBS DONE BY THAT MACHINE" + "**");
 							List<Integer> jobList = sharedLocation.get(receivedMachineId.MachineId);
-
 							if(jobList == null){
-								stringBuffer.append("NONE" + "**");
-								output.println(stringBuffer);
+								output.println(gson.toJson(getMachineInformationResponse));
 								break;
 							}
-
 							for(Job job: jobs){
 								for (Integer jobId: jobList){
 									if(job.JobUniqueId == jobId){
 										if(job.JobState.equals(Job.JOB_STATE_DONE)){
-											stringBuffer.append(
-												"Job Unique Id: " + job.JobUniqueId + "*" +
-												"Job Type: " + job.JobType + "*" +
-												"Job Length: " + job.JobLength + "**"
-											);
+											getMachineInformationResponse.COMPLETED_JOBS.add(job);
 										}
 									}
 								}
@@ -410,12 +374,12 @@ class ClientHandler extends Thread
 						}
 						catch (InterruptedException e) { }
 
-						output.println(stringBuffer);
+						output.println(gson.toJson(getMachineInformationResponse));
 					}
 					break;
 
 				case Commands.SEND_JOB_ORDER:
-					Job receivedJob = new Job(0, null, null);
+					Job receivedJob;
 					boolean isJobIdAlreadyExist = false;
 
 					try{
@@ -494,61 +458,39 @@ class ClientHandler extends Thread
 					break;
 
 				case Commands.GET_PENDING_JOB_ORDERS:
-					stringBuffer = new StringBuffer();
-					stringBuffer.append("PENDING JOB ORDERS" + "**");
+					GetPendingJobOrdersResponse getPendingJobOrdersResponse = new GetPendingJobOrdersResponse();
 
-					stringBuffer.append(JobTypes.CNC + " JOBS " + "**");
-					for(Job job: jobs) {
-						if (job.JobState.equals(Job.JOB_STATE_PENDING)) {
-							if (job.JobType.equals(JobTypes.CNC)) {
-								stringBuffer.append("JobUniqueId: " + job.JobUniqueId + "*" + "JobLength: " + job.JobLength + "**");
-							}
-						}
-					}
+					for(Job job: jobs)
+						if (job.JobState.equals(Job.JOB_STATE_PENDING))
+							if (job.JobType.equals(JobTypes.CNC))
+								getPendingJobOrdersResponse.CNC_JOB_ORDERS.add(job);
 
-					stringBuffer.append(JobTypes.DOKUM + " JOBS " + "**");
-					for(Job job: jobs){
-						if (job.JobState.equals(Job.JOB_STATE_PENDING)) {
-							if(job.JobType.equals(JobTypes.DOKUM)){
-								stringBuffer.append("JobUniqueId: " + job.JobUniqueId + "*" + "JobLength: " + job.JobLength + "**");
-							}
-						}
-					}
+					for(Job job: jobs)
+						if (job.JobState.equals(Job.JOB_STATE_PENDING))
+							if(job.JobType.equals(JobTypes.DOKUM))
+								getPendingJobOrdersResponse.DOKUM_JOB_ORDERS.add(job);
 
-					stringBuffer.append(JobTypes.KILIF + " JOBS " + "**");
-					for(Job job: jobs){
-						if (job.JobState.equals(Job.JOB_STATE_PENDING)) {
-							if(job.JobType.equals(JobTypes.KILIF)){
-								stringBuffer.append("JobUniqueId: " + job.JobUniqueId + "*" + "JobLength: " + job.JobLength + "**");
-							}
-						}
-					}
+					for(Job job: jobs)
+						if (job.JobState.equals(Job.JOB_STATE_PENDING))
+							if(job.JobType.equals(JobTypes.KILIF))
+								getPendingJobOrdersResponse.KILIF_JOB_ORDERS.add(job);
 
-					stringBuffer.append(JobTypes.KAPLAMA + " JOBS " + "**");
-					for(Job job: jobs){
-						if (job.JobState.equals(Job.JOB_STATE_PENDING)) {
-							if(job.JobType.equals(JobTypes.KAPLAMA)){
-								stringBuffer.append("JobUniqueId: " + job.JobUniqueId + "*" + "JobLength: " + job.JobLength + "**");
-							}
-						}
-					}
-					output.println(stringBuffer);
+					for(Job job: jobs)
+						if (job.JobState.equals(Job.JOB_STATE_PENDING))
+							if(job.JobType.equals(JobTypes.KAPLAMA))
+								getPendingJobOrdersResponse.KAPLAMA_JOB_ORDERS.add(job);
+
+					output.println(gson.toJson(getPendingJobOrdersResponse));
 					break;
 
 				case Commands.GET_MACHINE_STATES:
-					stringBuffer = new StringBuffer();
-					stringBuffer.append("MACHINES STATES" + "**");
-					if(!machines.isEmpty()){
-						for(Machine machine: machines){
-							stringBuffer.append(
-									"Machine Unique Id: " + machine.MachineUniqueId + "*" +
-									"Machine Name: " + machine.MachineName + "*" +
-									"Machine Type: " + machine.MachineType + "*" +
-									"Machine State: " + machine.MachineState + "**"
-							);
-						}
+					GetMachineStatesResponse getMachineStatesResponse = new GetMachineStatesResponse();
 
-						output.println(stringBuffer);
+					if(!machines.isEmpty()){
+						for(Machine machine: machines)
+							getMachineStatesResponse.MACHINES.add(machine);
+
+						output.println(gson.toJson(getMachineStatesResponse));
 					}
 					else {
 						output.println(220);
@@ -557,35 +499,23 @@ class ClientHandler extends Thread
 					break;
 
 				case Commands.GET_PROCESSING_JOB_ORDERS:
-					stringBuffer = new StringBuffer();
+					GetProcessingJobResponse getProcessingJobResponse = new GetProcessingJobResponse();
 					if(!machines.isEmpty()){
 						for(Machine machine: machines){
 							if(machine.MachineState.equals(Machine.MACHINE_STATE_BUSY)){
-								stringBuffer.append("MACHINE" + "**");
-								stringBuffer.append(
-										"Machine Unique Id: " + machine.MachineUniqueId + "*" +
-										"Machine Name: " + machine.MachineName + "*" +
-										"Machine Type: " + machine.MachineType + "*" +
-										"Machine State: " + machine.MachineState + "**"
-								);
-
 								try {
-									stringBuffer.append("PROCESSING JOB IN THE MACHINE" + "**");
 									List<Integer> jobList = sharedLocation.get(machine.MachineUniqueId);
 									if(jobList == null){
-										stringBuffer.append("NONE" + "**");
-										output.println(stringBuffer);
-										break;
+										getProcessingJobResponse.MACHINES.add(machine);
+										getProcessingJobResponse.JOBS.add(null);
+										continue;
 									}
 									for(Job job: jobs){
 										for (Integer jobId1: jobList){
 											if(job.JobUniqueId == jobId1){
 												if(job.JobState.equals(Job.JOB_STATE_PROCESSING)){
-													stringBuffer.append(
-															"Job Unique Id: " + job.JobUniqueId + "*" +
-															"Job Type: " + job.JobType + "*" +
-															"Job Length: " + job.JobLength + "**"
-													);
+													getProcessingJobResponse.MACHINES.add(machine);
+													getProcessingJobResponse.JOBS.add(job);
 												}
 											}
 										}
@@ -595,12 +525,12 @@ class ClientHandler extends Thread
 							}
 						}
 
-						if(stringBuffer.isEmpty()){
+						if(getProcessingJobResponse.MACHINES.size() == 0){
 							output.println(250);
 							break;
 						}
 						else {
-							output.println(stringBuffer);
+							output.println(gson.toJson(getProcessingJobResponse));
 						}
 					}
 					else {
