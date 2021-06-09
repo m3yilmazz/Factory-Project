@@ -1,3 +1,6 @@
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -16,6 +19,9 @@ public class MachineClient extends JFrame {
 	static Scanner networkInput;
 	static PrintWriter networkOutput;
 
+	static private GsonBuilder gsonBuilder = new GsonBuilder();
+	static private Gson gson = gsonBuilder.serializeNulls().create();
+
 	private final JPanel machinePropsPanel = new JPanel( new GridLayout( 4, 2, 5, 5 ) );
 	private final JPanel buttonAndResponseCodePanel = new JPanel( new GridLayout( 2, 1, 5, 5 ) );
 	private final JTextField machineUniqueIdJTextField = new JTextField();
@@ -25,7 +31,7 @@ public class MachineClient extends JFrame {
 	private final JButton addMachineJButton = new JButton( "Add Machine" );
 	private final JTextArea responseJTextArea = new JTextArea();
 	
-	MachineClient(Scanner networkInput, PrintWriter networkOutput){
+	MachineClient(Scanner networkInput, PrintWriter networkOutput, Gson gson){
 		super( "Machine Client" );
 		setLayout( new GridLayout( 2, 1, 10, 10 ) );
 
@@ -41,14 +47,16 @@ public class MachineClient extends JFrame {
 				public void actionPerformed( ActionEvent event )
 				{
 					Thread newThread = new Thread(() -> {
-						String message, machineIdString, machineName, machineType ,machineProductionSpeed, responseCode;
+						String message, machineIdString, machineName, machineType ,machineProductionSpeed, arguments, responseCode;
 
 						machineIdString = machineUniqueIdJTextField.getText();
 						machineName = machineNameJTextField.getText();
 						machineType = machineTypeJTextField.getText();
 						machineProductionSpeed = machineProductionSpeedJTextField.getText();
 
-						message = "ADD" + "*" + machineIdString + "*" + machineName + "*" + machineType + "*" + machineProductionSpeed;
+						arguments = gson.toJson(new AddMachineRequest(Integer.parseInt(machineIdString), machineName, machineType, machineProductionSpeed));
+
+						message = "ADD" + "*" + arguments;
 
 						responseCode = sendCommand(message, networkInput, networkOutput);
 
@@ -103,7 +111,7 @@ public class MachineClient extends JFrame {
 			System.out.println("\nHost ID not found!\n");
 			System.exit(1);
 		}
-		MachineClient machineClient = new MachineClient(networkInput, networkOutput);
+		MachineClient machineClient = new MachineClient(networkInput, networkOutput, gson);
 		machineClient.setDefaultCloseOperation( EXIT_ON_CLOSE );
 	}
 

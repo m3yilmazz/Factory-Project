@@ -8,5 +8,11 @@ public class Machine {
     String MachineProductionSpeed;
     String MachineState;
 
-
+    Machine(int MachineUniqueId, String MachineName, String MachineType, String MachineProductionSpeed){
+        this.MachineUniqueId = MachineUniqueId;
+        this.MachineName = MachineName;
+        this.MachineType = MachineType;
+        this.MachineProductionSpeed = MachineProductionSpeed;
+        this.MachineState = Machine.MACHINE_STATE_EMPTY;
+    }
 }

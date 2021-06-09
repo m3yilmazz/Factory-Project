@@ -104,10 +104,8 @@ class ClientHandler extends Thread
 
 			command = splittedReceived[0];
 
-			String userName, userPassword;
-			String machineIdString, machineName, machineType ,machineProductionSpeed, metric;
+			String machineIdString, metric;
 			String jobIdString, jobType, jobLength;
-			int machineId;
 			User receivedUser = new User(null, null);
 
 			switch (command) {
@@ -117,6 +115,7 @@ class ClientHandler extends Thread
 
 						try{
 							receivedUser = gson.fromJson(argumentsJsonString, User.class);
+							receivedUser.UserStatus = User.OFFLINE;
 						}
 						catch (JsonParseException e){
 							output.println(410);
@@ -155,6 +154,7 @@ class ClientHandler extends Thread
 
 					output.println(200);
 					break;
+
 				case Commands.LOGOFF:
 					try{
 						argumentsJsonString = splittedReceived[1];
@@ -173,7 +173,7 @@ class ClientHandler extends Thread
 					}
 
 					try{
-						if(receivedUser.UserName.isBlank() || receivedUser.UserPassword.isBlank()){
+						if(receivedUser.UserName.isEmpty() || receivedUser.UserPassword.isEmpty()){
 							output.println(410);
 							break;
 						}
@@ -199,24 +199,43 @@ class ClientHandler extends Thread
 					break;
 
 				case Commands.ADD_MACHINE:
-					Machine newMachine = new Machine();
+					Machine receivedMachine = new Machine(0, null, null, null);
 					boolean machineIdIsAlreadyExist = false;
 
 					try{
-						machineIdString = splittedReceived[1];
-						machineName = splittedReceived[2];
-						machineType = splittedReceived[3];
-						machineProductionSpeed = splittedReceived[4];
+						argumentsJsonString = splittedReceived[1];
+
+						try{
+							receivedMachine = gson.fromJson(argumentsJsonString, Machine.class);
+							receivedMachine.MachineState = Machine.MACHINE_STATE_EMPTY;
+						}
+						catch (JsonParseException e){
+							output.println(410);
+							break;
+						}
 					}
 					catch (ArrayIndexOutOfBoundsException e){
 						output.println(410);
 						break;
 					}
 
-					machineId = Integer.parseInt(machineIdString);
+					try{
+						if(receivedMachine.MachineUniqueId == 0 ||
+							receivedMachine.MachineName.isEmpty() ||
+							receivedMachine.MachineType.isEmpty() ||
+							receivedMachine.MachineProductionSpeed.isEmpty())
+						{
+							output.println(410);
+							break;
+						}
+					}
+					catch (NullPointerException e){
+						output.println(410);
+						break;
+					}
 
 					for(Machine machine: machines){
-						if(machine.MachineUniqueId == machineId){
+						if(machine.MachineUniqueId == receivedMachine.MachineUniqueId){
 							machineIdIsAlreadyExist = true;
 							break;
 						}
@@ -227,38 +246,28 @@ class ClientHandler extends Thread
 						break;
 					}
 					else {
-						newMachine.MachineUniqueId = machineId;
-						newMachine.MachineName = machineName;
-
-						boolean isMachineTypeValid = false;
-						if(machineType.equals(JobTypes.CNC)){
-							isMachineTypeValid = true;
-						}
-						else if (machineType.equals(JobTypes.DOKUM)) {
-							isMachineTypeValid = true;
-						}
-						else if (machineType.equals(JobTypes.KILIF)){
-							isMachineTypeValid = true;
-						}
-						else if(machineType.equals(JobTypes.KAPLAMA)){
-							isMachineTypeValid = true;
-						}
-
-						if (isMachineTypeValid) {
-							newMachine.MachineType = machineType;
-						} else {
+						if( !(receivedMachine.MachineType.equals(JobTypes.CNC) ||
+							receivedMachine.MachineType.equals(JobTypes.DOKUM) ||
+							receivedMachine.MachineType.equals(JobTypes.KILIF) ||
+							receivedMachine.MachineType.equals(JobTypes.KAPLAMA)))
+						{
 							output.println(211);
 							break;
 						}
 
-						metric = machineProductionSpeed.split(" ")[1];
-						if(metric.equals(JobTypes.METRICS.get(machineType))){
-							newMachine.MachineProductionSpeed = machineProductionSpeed;
-
-							newMachine.MachineState = Machine.MACHINE_STATE_EMPTY;
-							machines.add(newMachine);
+						metric = receivedMachine.MachineProductionSpeed.split(" ")[1];
+						if(metric.equals(JobTypes.METRICS.get(receivedMachine.MachineType))){
+							machines.add(receivedMachine);
 
 							output.println(110);
+
+							System.out.println(
+								"Added Machine:" +
+								" Machine Unique Id: " + receivedMachine.MachineUniqueId +
+								" Machine Name: " + receivedMachine.MachineUniqueId +
+								" Machine Production Speed: " + receivedMachine.MachineUniqueId +
+								" Machine State: " + receivedMachine.MachineUniqueId
+							);
 
 							assignJobToMachine();
 						}
