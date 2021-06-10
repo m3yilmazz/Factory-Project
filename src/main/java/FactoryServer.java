@@ -2,28 +2,28 @@ import com.google.gson.*;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Type;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class FactoryServer
 {
 	private static ServerSocket serverSocket;
 	private static final int PORT = 9999;
-	private static ArrayList<Machine> machines = new ArrayList<Machine>();
-	private static ArrayList<Job> jobs = new ArrayList<Job>();
+	private static CustomArrayList<Machine> machinesSharedLocation = new SynchedCustomArrayList<Machine>();
+	private static CustomArrayList<Job> jobsSharedLocation = new SynchedCustomArrayList<Job>();
 	private static ArrayList<User> users = new ArrayList<User>();
-	private static ExecutorService executorService = Executors.newCachedThreadPool();
+	private static final ExecutorService executorService = Executors.newCachedThreadPool();
 	private static CustomMap jobSchedulingSharedLocation = new SynchedCustomMap();
 
 	static Map<String, String> USERNAME_PASSWORD_MAP = new HashMap<String, String>();
 
-	private static GsonBuilder gsonBuilder = new GsonBuilder();
-	private static Gson gson = gsonBuilder.create();
-	private static Gson prettyGson = gsonBuilder.setPrettyPrinting().create();
+	private static final GsonBuilder gsonBuilder = new GsonBuilder();
+	private static final Gson gson = gsonBuilder.create();
 
 	public static void main(String[] args) throws IOException
 	{
@@ -40,22 +40,19 @@ public class FactoryServer
 		JobTypes.METRICS.put(JobTypes.KILIF, JobTypes.KILIF_METRIC);
 		JobTypes.METRICS.put(JobTypes.KAPLAMA, JobTypes.KAPLAMA_METRIC);
 
-		try
-		{
+		try {
 			serverSocket = new ServerSocket(PORT);
 		}
-		catch (IOException ioEx)
-		{
+		catch (IOException ioEx) {
 			System.out.println("\nUnable to set up port!");
 			System.exit(1);
 		}
 
-		do
-		{
+		do {
 			Socket client = serverSocket.accept();
 			System.out.println("\nNew client accepted.\n");
 
-			ClientHandler handler = new ClientHandler(client, machines, jobs, users, executorService, jobSchedulingSharedLocation, gson, prettyGson);
+			ClientHandler handler = new ClientHandler(client, machinesSharedLocation, jobsSharedLocation, users, executorService, jobSchedulingSharedLocation, gson);
 
 			handler.start();
 		}while (true);
@@ -64,39 +61,45 @@ public class FactoryServer
 
 class ClientHandler extends Thread
 {
-	private Socket client;
+	private final Socket client;
 	private Scanner input;
 	private PrintWriter output;
-	private ArrayList<Machine> machines;
-	private ArrayList<Job> jobs;
+	private CustomArrayList<Machine> machinesSharedLocation;
+	private CustomArrayList<Job> jobsSharedLocation;
 	private ArrayList<User> users;
-	private ExecutorService executorService;
+	private final ExecutorService executorService;
 	private CustomMap jobSchedulingSharedLocation;
-	private Gson gson;
-	private Gson prettyGson;
+	private final Gson gson;
 
-	public ClientHandler(Socket socket, ArrayList<Machine> machines, ArrayList<Job> jobs, ArrayList<User> users, ExecutorService executorService, CustomMap jobSchedulingSharedLocation, Gson gson, Gson prettyGson)
+	private Future<ArrayList<Integer>> jobsArrayListFeature;
+	private ArrayList<Integer> jobsArrayList = new ArrayList<Integer>();
+
+	private Future<ArrayList<Job>> jobsFuture;
+	private ArrayList<Job> jobs = new ArrayList<Job>();
+
+	private Future<ArrayList<Machine>> machinesFuture;
+	private ArrayList<Machine> machines = new ArrayList<Machine>();
+
+	public ClientHandler(Socket socket, CustomArrayList<Machine> machinesSharedLocation, CustomArrayList<Job> jobsSharedLocation, ArrayList<User> users, ExecutorService executorService, CustomMap jobSchedulingSharedLocation, Gson gson)
 	{
-		client = socket;
-		this.machines = machines;
-		this.jobs = jobs;
+		this.client = socket;
+		this.machinesSharedLocation = machinesSharedLocation;
+		this.jobsSharedLocation = jobsSharedLocation;
 		this.users = users;
 		this.executorService = executorService;
 		this.jobSchedulingSharedLocation = jobSchedulingSharedLocation;
 		this.gson = gson;
-		this.prettyGson = prettyGson;
 
-		try
-		{
+		try {
 			input = new Scanner(client.getInputStream());
 			output = new PrintWriter(client.getOutputStream(),true);
 		}
-		catch(IOException ioEx)
-		{
+		catch(IOException ioEx) {
 			ioEx.printStackTrace();
 		}
 	}
 
+	@Override
 	public void run() {
 		String received, command, argumentsJsonString;
 
@@ -108,46 +111,42 @@ class ClientHandler extends Thread
 				break;
 			}
 
-			String[] splittedReceived = received.split("\\u002A");
+			String[] splitReceived = received.split("\\u002A");
 
-			command = splittedReceived[0];
+			command = splitReceived[0];
 
 			String metric;
 			User receivedUser;
 
 			switch (command) {
-				case Commands.LOGIN:
-					try{
-						argumentsJsonString = splittedReceived[1];
+				case Commands.LOGIN -> {
+					try {
+						argumentsJsonString = splitReceived[1];
 
-						try{
+						try {
 							receivedUser = gson.fromJson(argumentsJsonString, User.class);
 							receivedUser.UserStatus = User.OFFLINE;
-						}
-						catch (JsonParseException e){
+						} catch (JsonParseException e) {
 							output.println(410);
 							break;
 						}
-					}
-					catch (ArrayIndexOutOfBoundsException e){
+					} catch (ArrayIndexOutOfBoundsException e) {
 						output.println(410);
 						break;
 					}
-
-					if(receivedUser.UserName.isEmpty() || receivedUser.UserPassword.isEmpty()){
+					if (receivedUser.UserName.isEmpty() || receivedUser.UserPassword.isEmpty()) {
 						output.println(410);
 						break;
 					}
-
 					boolean isUserNameOrPasswordIsWrong = true;
-					for(User user: users){
-						if(receivedUser.UserName.equals(user.UserName)){
-							if(user.UserStatus.equals(User.ONLINE)){
+					for (User user : users) {
+						if (receivedUser.UserName.equals(user.UserName)) {
+							if (user.UserStatus.equals(User.ONLINE)) {
 								output.println(201);
 								break;
 							}
 							else {
-								if(receivedUser.UserPassword.equals(user.UserPassword)){
+								if (receivedUser.UserPassword.equals(user.UserPassword)) {
 									user.UserStatus = User.ONLINE;
 									output.println(100);
 									isUserNameOrPasswordIsWrong = false;
@@ -161,44 +160,41 @@ class ClientHandler extends Thread
 							}
 						}
 					}
-					if(isUserNameOrPasswordIsWrong){
+					if (isUserNameOrPasswordIsWrong) {
 						output.println(200);
-						break;
 					}
-					break;
+				}
+				case Commands.LOGOFF -> {
+					try {
+						argumentsJsonString = splitReceived[1];
 
-				case Commands.LOGOFF:
-					try{
-						argumentsJsonString = splittedReceived[1];
-
-						try{
+						try {
 							receivedUser = gson.fromJson(argumentsJsonString, User.class);
 						}
-						catch (JsonParseException e){
+						catch (JsonParseException e) {
 							output.println(410);
 							break;
 						}
 					}
-					catch (ArrayIndexOutOfBoundsException e){
+					catch (ArrayIndexOutOfBoundsException e) {
 						output.println(410);
 						break;
 					}
 
-					try{
-						if(receivedUser.UserName.isEmpty() || receivedUser.UserPassword.isEmpty()){
+					try {
+						if (receivedUser.UserName.isEmpty() || receivedUser.UserPassword.isEmpty()) {
 							output.println(410);
 							break;
 						}
-					}
-					catch (NullPointerException e){
+					} catch (NullPointerException e) {
 						output.println(410);
 						break;
 					}
 
-					for(User user: users){
-						if(receivedUser.UserName.equals(user.UserName)){
-							if(receivedUser.UserPassword.equals(user.UserPassword)){
-								if(user.UserStatus.equals(User.ONLINE)){
+					for (User user : users) {
+						if (receivedUser.UserName.equals(user.UserName)) {
+							if (receivedUser.UserPassword.equals(user.UserPassword)) {
+								if (user.UserStatus.equals(User.ONLINE)) {
 									user.UserStatus = User.OFFLINE;
 									output.println(101);
 									System.out.println(user.UserName + " has logged off.");
@@ -207,341 +203,427 @@ class ClientHandler extends Thread
 							}
 						}
 					}
-
 					output.println(202);
-					break;
-
-				case Commands.ADD_MACHINE:
+				}
+				case Commands.ADD_MACHINE -> {
 					Machine receivedMachine;
 					boolean machineIdIsAlreadyExist = false;
 
-					try{
-						argumentsJsonString = splittedReceived[1];
+					try {
+						argumentsJsonString = splitReceived[1];
 
-						try{
+						try {
 							receivedMachine = gson.fromJson(argumentsJsonString, Machine.class);
 							receivedMachine.MachineState = Machine.MACHINE_STATE_EMPTY;
 						}
-						catch (JsonParseException e){
+						catch (JsonParseException e) {
 							output.println(410);
 							break;
 						}
 					}
-					catch (ArrayIndexOutOfBoundsException e){
+					catch (ArrayIndexOutOfBoundsException e) {
 						output.println(410);
 						break;
 					}
 
-					try{
-						if(receivedMachine.MachineUniqueId == 0 ||
+					try {
+						if (receivedMachine.MachineUniqueId == 0 ||
 							receivedMachine.MachineName.isEmpty() ||
 							receivedMachine.MachineType.isEmpty() ||
-							receivedMachine.MachineProductionSpeed.isEmpty())
-						{
+							receivedMachine.MachineProductionSpeed.isEmpty()) {
 							output.println(410);
 							break;
 						}
 					}
-					catch (NullPointerException e){
+					catch (NullPointerException e) {
 						output.println(410);
 						break;
 					}
 
-					for(Machine machine: machines){
-						if(machine.MachineUniqueId == receivedMachine.MachineUniqueId){
+					machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+
+					try {
+						machines = machinesFuture.get();
+					}
+					catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					for (Machine machine : machines) {
+						if (machine.MachineUniqueId == receivedMachine.MachineUniqueId) {
 							machineIdIsAlreadyExist = true;
 							break;
 						}
 					}
 
-					if(machineIdIsAlreadyExist) {
+					if (machineIdIsAlreadyExist) {
 						output.println(210);
-						break;
 					}
 					else {
-						if( !(receivedMachine.MachineType.equals(JobTypes.CNC) ||
-							receivedMachine.MachineType.equals(JobTypes.DOKUM) ||
-							receivedMachine.MachineType.equals(JobTypes.KILIF) ||
-							receivedMachine.MachineType.equals(JobTypes.KAPLAMA)))
-						{
+						if (!(receivedMachine.MachineType.equals(JobTypes.CNC) ||
+								receivedMachine.MachineType.equals(JobTypes.DOKUM) ||
+								receivedMachine.MachineType.equals(JobTypes.KILIF) ||
+								receivedMachine.MachineType.equals(JobTypes.KAPLAMA))) {
 							output.println(211);
 							break;
 						}
 
-						metric = receivedMachine.MachineProductionSpeed.split(" ")[1];
-						if(metric.equals(JobTypes.METRICS.get(receivedMachine.MachineType))){
-							machines.add(receivedMachine);
-
-							output.println(110);
-
-							System.out.println(
-								"Added Machine: " +
-								"Machine Unique Id: " + receivedMachine.MachineUniqueId + ", " +
-								"Machine Name: " + receivedMachine.MachineName + ", " +
-								"Machine Type: " + receivedMachine.MachineType + ", " +
-								"Machine Production Speed: " + receivedMachine.MachineProductionSpeed + ", " +
-								"Machine State: " + receivedMachine.MachineState
-							);
-
-							assignJobToMachine();
+						try{
+							Integer.parseInt(receivedMachine.MachineProductionSpeed.split(" ")[0]);
 						}
-						else {
-							output.println(212);
+						catch (NumberFormatException e){
+							output.println(213);
 							break;
 						}
-					}
-					break;
 
-				case Commands.GET_MACHINES:
+						try {
+							metric = receivedMachine.MachineProductionSpeed.split(" ")[1];
+							if (metric.equals(JobTypes.METRICS.get(receivedMachine.MachineType))) {
+								executorService.execute(new ArrayListProducer<Machine>(machinesSharedLocation, receivedMachine));
+
+								output.println(110);
+
+								System.out.println(
+									"Added Machine: " +
+									"Machine Unique Id: " + receivedMachine.MachineUniqueId + ", " +
+									"Machine Name: " + receivedMachine.MachineName + ", " +
+									"Machine Type: " + receivedMachine.MachineType + ", " +
+									"Machine Production Speed: " + receivedMachine.MachineProductionSpeed + ", " +
+									"Machine State: " + receivedMachine.MachineState
+								);
+
+								assignJobToMachine();
+							} else {
+								output.println(212);
+							}
+						}
+						catch (ArrayIndexOutOfBoundsException e){
+							output.println(212);
+						}
+					}
+				}
+				case Commands.GET_MACHINES -> {
 					GetMachinesResponse getMachinesResponse = new GetMachinesResponse();
-					if(!machines.isEmpty()){
-						for(Machine machine: machines){
-							if (machine.MachineType.equals(JobTypes.CNC)) {
+					machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+
+					try {
+						machines = machinesFuture.get();
+					}
+					catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					if (machines.size() != 0) {
+						for (Machine machine : machines)
+							if (machine.MachineType.equals(JobTypes.CNC))
 								getMachinesResponse.CNC_MACHINES.add(machine);
-							}
-						}
 
-						for(Machine machine: machines){
-							if (machine.MachineType.equals(JobTypes.DOKUM)) {
+						for (Machine machine : machines)
+							if (machine.MachineType.equals(JobTypes.DOKUM))
 								getMachinesResponse.DOKUM_MACHINES.add(machine);
-							}
-						}
 
-						for(Machine machine: machines){
-							if (machine.MachineType.equals(JobTypes.KILIF)) {
+						for (Machine machine : machines)
+							if (machine.MachineType.equals(JobTypes.KILIF))
 								getMachinesResponse.KILIF_MACHINES.add(machine);
-							}
-						}
 
-						for(Machine machine: machines){
-							if (machine.MachineType.equals(JobTypes.KAPLAMA)) {
+						for (Machine machine : machines)
+							if (machine.MachineType.equals(JobTypes.KAPLAMA))
 								getMachinesResponse.KAPLAMA_MACHINES.add(machine);
-							}
-						}
-						output.println(gson.toJson(getMachinesResponse));
-					}
-					else {
-						output.println(220);
-					}
-					break;
 
-				case Commands.GET_MACHINE_INFORMATIONS:
+						output.println(gson.toJson(getMachinesResponse));
+					} else {
+						output.println(420);
+					}
+				}
+				case Commands.GET_MACHINE_INFORMATIONS -> {
 					GetMachineInformationsRequest receivedMachineId;
 					GetMachineInformationResponse getMachineInformationResponse = new GetMachineInformationResponse();
-					try{
-						argumentsJsonString = splittedReceived[1];
 
-						try{
+					try {
+						argumentsJsonString = splitReceived[1];
+
+						try {
 							receivedMachineId = gson.fromJson(argumentsJsonString, GetMachineInformationsRequest.class);
-						}
-						catch (JsonParseException e){
+
+							if(receivedMachineId.MachineId == 0){
+								output.println(410);
+								break;
+							}
+						} catch (JsonParseException e) {
 							output.println(410);
 							break;
 						}
 					}
-					catch (ArrayIndexOutOfBoundsException e){
+					catch (ArrayIndexOutOfBoundsException e) {
 						output.println(410);
 						break;
 					}
 
-					for(Machine machine: machines){
-						if(machine.MachineUniqueId == receivedMachineId.MachineId){
+					machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+
+					try {
+						machines = machinesFuture.get();
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					if(machines.size() == 0){
+						output.println(420);
+						break;
+					}
+
+					for (Machine machine : machines) {
+						if (machine.MachineUniqueId == receivedMachineId.MachineId) {
 							getMachineInformationResponse.MACHINE = machine;
 							break;
 						}
 					}
-					if(getMachineInformationResponse.MACHINE == null){
-						output.println(230);
-						break;
-					}
-					else {
+
+					if (getMachineInformationResponse.MACHINE == null) {
+						output.println(220);
+					} else {
+						jobsArrayListFeature = executorService.submit(new JobAssignmentConsumer(jobSchedulingSharedLocation, receivedMachineId.MachineId));
+
 						try {
-							List<Integer> jobList = jobSchedulingSharedLocation.get(receivedMachineId.MachineId);
-							if(jobList == null){
-								output.println(gson.toJson(getMachineInformationResponse));
-								break;
-							}
-							for(Job job: jobs){
-								for (Integer jobId: jobList){
-									if(job.JobUniqueId == jobId){
-										if(job.JobState.equals(Job.JOB_STATE_DONE)){
-											getMachineInformationResponse.COMPLETED_JOBS.add(job);
-										}
-									}
-								}
-							}
+							jobsArrayList = jobsArrayListFeature.get();
+						} catch (InterruptedException | ExecutionException e) {
+							e.printStackTrace();
 						}
-						catch (InterruptedException e) { }
+
+						if (jobsArrayList == null) {
+							output.println(gson.toJson(getMachineInformationResponse));
+							break;
+						}
+
+						jobsFuture = executorService.submit(new ArrayListConsumer<Job>(jobsSharedLocation));
+
+						try {
+							jobs = jobsFuture.get();
+						} catch (InterruptedException | ExecutionException e) {
+							e.printStackTrace();
+						}
+
+						for (Job job : jobs)
+							for (Integer jobId : jobsArrayList)
+								if (job.JobUniqueId == jobId)
+									if (job.JobState.equals(Job.JOB_STATE_DONE))
+										getMachineInformationResponse.COMPLETED_JOBS.add(job);
+
 
 						output.println(gson.toJson(getMachineInformationResponse));
 					}
-					break;
-
-				case Commands.SEND_JOB_ORDER:
+				}
+				case Commands.SEND_JOB_ORDER -> {
 					Job receivedJob;
 					boolean isJobIdAlreadyExist = false;
 
-					try{
-						argumentsJsonString = splittedReceived[1];
+					try {
+						argumentsJsonString = splitReceived[1];
 
-						try{
+						try {
 							receivedJob = gson.fromJson(argumentsJsonString, Job.class);
 							receivedJob.JobState = Job.JOB_STATE_PENDING;
 						}
-						catch (JsonParseException e){
+						catch (JsonParseException e) {
 							output.println(410);
 							break;
 						}
 					}
-					catch (ArrayIndexOutOfBoundsException e){
+					catch (ArrayIndexOutOfBoundsException e) {
 						output.println(410);
 						break;
 					}
 
-					try{
-						if( receivedJob.JobUniqueId == 0 ||
+					try {
+						if (receivedJob.JobUniqueId == 0 ||
 							receivedJob.JobType.isEmpty() ||
-							receivedJob.JobLength.isEmpty())
-						{
+							receivedJob.JobLength.isEmpty()) {
 							output.println(410);
 							break;
 						}
 					}
-					catch (NullPointerException e){
+					catch (NullPointerException e) {
 						output.println(410);
 						break;
 					}
 
-					for(Job job: jobs){
-						if(job.JobUniqueId == receivedJob.JobUniqueId){
+					jobsFuture = executorService.submit(new ArrayListConsumer<Job>(jobsSharedLocation));
+
+					try {
+						jobs = jobsFuture.get();
+					}
+					catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					for (Job job : jobs) {
+						if (job.JobUniqueId == receivedJob.JobUniqueId) {
 							isJobIdAlreadyExist = true;
 							break;
 						}
 					}
 
-					if(isJobIdAlreadyExist) {
-						output.println(240);
-						break;
+					if (isJobIdAlreadyExist) {
+						output.println(230);
 					}
 					else {
-						if( !(  receivedJob.JobType.equals(JobTypes.CNC) ||
+						if (!(receivedJob.JobType.equals(JobTypes.CNC) ||
 								receivedJob.JobType.equals(JobTypes.DOKUM) ||
 								receivedJob.JobType.equals(JobTypes.KILIF) ||
-								receivedJob.JobType.equals(JobTypes.KAPLAMA)))
-						{
-							output.println(241);
+								receivedJob.JobType.equals(JobTypes.KAPLAMA))) {
+							output.println(231);
 							break;
 						}
 
-						metric = receivedJob.JobLength.split(" ")[1];
-						if(metric.equals(JobTypes.METRICS.get(receivedJob.JobType))){
-							jobs.add(receivedJob);
+						try {
+							metric = receivedJob.JobLength.split(" ")[1];
 
-							output.println(140);
+							if (metric.equals(JobTypes.METRICS.get(receivedJob.JobType))) {
+								executorService.execute(new ArrayListProducer<Job>(jobsSharedLocation, receivedJob));
 
-							System.out.println(
-								"Added Job: " +
-								"Job Unique Id: " + receivedJob.JobUniqueId + ", " +
-								"Job Type: " + receivedJob.JobType + ", " +
-								"Job Length: " + receivedJob.JobLength + ", " +
-								"Job State: " + receivedJob.JobState
-							);
+								output.println(130);
 
-							assignJobToMachine();
-						}
-						else {
-							output.println(242);
-							break;
+								System.out.println(
+										"Added Job: " +
+												"Job Unique Id: " + receivedJob.JobUniqueId + ", " +
+												"Job Type: " + receivedJob.JobType + ", " +
+												"Job Length: " + receivedJob.JobLength + ", " +
+												"Job State: " + receivedJob.JobState
+								);
+
+								assignJobToMachine();
+							} else {
+								output.println(232);
+							}
+						} catch (ArrayIndexOutOfBoundsException e) {
+							output.println(232);
 						}
 					}
-					break;
-
-				case Commands.GET_PENDING_JOB_ORDERS:
+				}
+				case Commands.GET_PENDING_JOB_ORDERS -> {
 					GetPendingJobOrdersResponse getPendingJobOrdersResponse = new GetPendingJobOrdersResponse();
+					jobsFuture = executorService.submit(new ArrayListConsumer<Job>(jobsSharedLocation));
 
-					for(Job job: jobs)
+					boolean isCNCPendingJobExist = false, isDOKUMPendingJobExist = false, isKILIFPendingJobExist = false, isKAPLAMAPendingJobExist = false;
+
+					try {
+						jobs = jobsFuture.get();
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					if(jobs.size() == 0){
+						output.println(430);
+						break;
+					}
+
+					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
-							if (job.JobType.equals(JobTypes.CNC))
+							if (job.JobType.equals(JobTypes.CNC)) {
 								getPendingJobOrdersResponse.CNC_JOB_ORDERS.add(job);
-
-					for(Job job: jobs)
+								isCNCPendingJobExist = true;
+							}
+					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
-							if(job.JobType.equals(JobTypes.DOKUM))
+							if (job.JobType.equals(JobTypes.DOKUM)) {
 								getPendingJobOrdersResponse.DOKUM_JOB_ORDERS.add(job);
-
-					for(Job job: jobs)
+								isDOKUMPendingJobExist = true;
+							}
+					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
-							if(job.JobType.equals(JobTypes.KILIF))
+							if (job.JobType.equals(JobTypes.KILIF)) {
 								getPendingJobOrdersResponse.KILIF_JOB_ORDERS.add(job);
-
-					for(Job job: jobs)
+								isKILIFPendingJobExist = true;
+							}
+					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
-							if(job.JobType.equals(JobTypes.KAPLAMA))
+							if (job.JobType.equals(JobTypes.KAPLAMA)) {
 								getPendingJobOrdersResponse.KAPLAMA_JOB_ORDERS.add(job);
+								isKAPLAMAPendingJobExist = true;
+							}
 
+					if(!(isCNCPendingJobExist && isDOKUMPendingJobExist && isKILIFPendingJobExist && isKAPLAMAPendingJobExist)){
+						output.println(430);
+						break;
+					}
 					output.println(gson.toJson(getPendingJobOrdersResponse));
-					break;
-
-				case Commands.GET_MACHINE_STATES:
+				}
+				case Commands.GET_MACHINE_STATES -> {
 					GetMachineStatesResponse getMachineStatesResponse = new GetMachineStatesResponse();
-
-					if(!machines.isEmpty()){
-						for(Machine machine: machines)
+					machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+					try {
+						machines = machinesFuture.get();
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+					if (machines.size() != 0) {
+						for (Machine machine : machines)
 							getMachineStatesResponse.MACHINES.add(machine);
 
 						output.println(gson.toJson(getMachineStatesResponse));
+					} else {
+						output.println(420);
 					}
-					else {
-						output.println(220);
-						break;
-					}
-					break;
-
-				case Commands.GET_PROCESSING_JOB_ORDERS:
+				}
+				case Commands.GET_PROCESSING_JOB_ORDERS -> {
 					GetProcessingJobResponse getProcessingJobResponse = new GetProcessingJobResponse();
-					if(!machines.isEmpty()){
-						for(Machine machine: machines){
-							if(machine.MachineState.equals(Machine.MACHINE_STATE_BUSY)){
+
+					machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+
+					try {
+						machines = machinesFuture.get();
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					jobsFuture = executorService.submit(new ArrayListConsumer<Job>(jobsSharedLocation));
+
+					try {
+						jobs = jobsFuture.get();
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					if (machines.size() != 0) {
+						for (Machine machine : machines) {
+							if (machine.MachineState.equals(Machine.MACHINE_STATE_BUSY)) {
+								jobsArrayListFeature = executorService.submit(new JobAssignmentConsumer(jobSchedulingSharedLocation, machine.MachineUniqueId));
+
 								try {
-									List<Integer> jobList = jobSchedulingSharedLocation.get(machine.MachineUniqueId);
-									if(jobList == null){
-										getProcessingJobResponse.MACHINES.add(machine);
-										getProcessingJobResponse.JOBS.add(null);
-										continue;
-									}
-									for(Job job: jobs){
-										for (Integer jobId1: jobList){
-											if(job.JobUniqueId == jobId1){
-												if(job.JobState.equals(Job.JOB_STATE_PROCESSING)){
-													getProcessingJobResponse.MACHINES.add(machine);
-													getProcessingJobResponse.JOBS.add(job);
-												}
+									jobsArrayList = jobsArrayListFeature.get();
+								} catch (InterruptedException | ExecutionException e) {
+									e.printStackTrace();
+								}
+
+								if (jobsArrayList == null) {
+									getProcessingJobResponse.MACHINES.add(machine);
+									getProcessingJobResponse.JOBS.add(null);
+									continue;
+								}
+
+								for (Job job : jobs) {
+									for (Integer jobId1 : jobsArrayList) {
+										if (job.JobUniqueId == jobId1) {
+											if (job.JobState.equals(Job.JOB_STATE_PROCESSING)) {
+												getProcessingJobResponse.MACHINES.add(machine);
+												getProcessingJobResponse.JOBS.add(job);
 											}
 										}
 									}
 								}
-								catch (InterruptedException e) { }
 							}
 						}
 
-						if(getProcessingJobResponse.MACHINES.size() == 0){
-							output.println(250);
-							break;
-						}
-						else {
+						if (getProcessingJobResponse.MACHINES.size() == 0) {
+							output.println(240);
+						} else {
 							output.println(gson.toJson(getProcessingJobResponse));
 						}
+					} else {
+						output.println(420);
 					}
-					else {
-						output.println(220);
-						break;
-					}
-
-					break;
-
-				default:
-					output.println(400);
-					break;
+				}
+				default -> output.println(400);
 			}
 		} while (!received.equals("EXIT"));
 
@@ -556,6 +638,24 @@ class ClientHandler extends Thread
 	}
 
 	void assignJobToMachine(){
+		jobsFuture =  executorService.submit(new ArrayListConsumer<Job>(jobsSharedLocation));
+
+		try {
+			jobs = jobsFuture.get();
+		}
+		catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+
+		machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+
+		try {
+			machines = machinesFuture.get();
+		}
+		catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+
 		for (Job job: jobs){
 			if(job.JobState.equals("PENDING")){
 				for(Machine machine: machines){
@@ -581,6 +681,24 @@ class ClientHandler extends Thread
 	void completeJob(int machineId, int jobId, long delay){
 		TimerTask task = new TimerTask() {
 			public void run() {
+				jobsFuture =  executorService.submit(new ArrayListConsumer<Job>(jobsSharedLocation));
+
+				try {
+					jobs = jobsFuture.get();
+				}
+				catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
+
+				machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+
+				try {
+					machines = machinesFuture.get();
+				}
+				catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
+
 				for(Machine machine: machines){
 					if(machineId == machine.MachineUniqueId){
 						machine.MachineState = "EMPTY";

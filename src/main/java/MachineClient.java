@@ -49,18 +49,26 @@ public class MachineClient extends JFrame implements KeyListener {
 				public void actionPerformed( ActionEvent event )
 				{
 					String message, machineIdString, machineName, machineType ,machineProductionSpeed, arguments;
+					int machineId;
 
 					machineIdString = machineUniqueIdJTextField.getText();
 					machineName = machineNameJTextField.getText();
 					machineType = machineTypeJTextField.getText();
 					machineProductionSpeed = machineProductionSpeedJTextField.getText();
 
-					arguments = gson.toJson(new AddMachineRequest(Integer.parseInt(machineIdString), machineName, machineType, machineProductionSpeed));
+					try {
+						machineId = Integer.parseInt(machineIdString);
 
-					message = Commands.ADD_MACHINE + "*" + arguments;
+						arguments = gson.toJson(new AddMachineRequest(machineId, machineName, machineType, machineProductionSpeed));
 
-					CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
-					commandSender.execute();
+						message = Commands.ADD_MACHINE + "*" + arguments;
+
+						CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
+						commandSender.execute();
+					}
+					catch (NumberFormatException e){
+						responseJTextArea.setText("Machine Unique Id can not include a character.");
+					}
 				}
 			}
 		);

@@ -1,6 +1,7 @@
 import java.util.ArrayList;
+import java.util.concurrent.Callable;
 
-public class JobAssignmentConsumer implements Runnable
+public class JobAssignmentConsumer implements Callable<ArrayList<Integer>>
 {
    private final CustomMap sharedLocation;
    private final int machineId;
@@ -11,22 +12,18 @@ public class JobAssignmentConsumer implements Runnable
       this.machineId = machineId;
    }
 
-   public void run()
-   {
+   @Override
+   public ArrayList<Integer> call() {
+      ArrayList<Integer> jobList = new ArrayList<Integer>();
       try
       {
-         ArrayList<Integer> jobList = sharedLocation.get(machineId);
-         for(int index: jobList){
-            System.out.println("index: " + index);
-         }
+         jobList = sharedLocation.get(machineId);
       }
       catch ( InterruptedException exception )
       {
          exception.printStackTrace();
       }
-   }
 
-   protected void finalize() {
-
+      return jobList;
    }
 }

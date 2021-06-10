@@ -7,25 +7,22 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SynchedCustomMap implements CustomMap {
    private final Lock accessLock = new ReentrantLock();
 
-   private final Condition canWrite = accessLock.newCondition();
-   private final Condition canRead = accessLock.newCondition();
-
    private HashMap<Integer, ArrayList<Integer>> jobAssignment = new HashMap<Integer, ArrayList<Integer>>();
 
    public void set( int machineId, int jobId ) throws InterruptedException
    {
       accessLock.lock();
-
+      ArrayList<Integer> jobList = new ArrayList<Integer>() ;
       try
       {
-         Thread.sleep(1000 * 5);
-         ArrayList<Integer> jobList = new ArrayList<Integer>() ;
          jobList = jobAssignment.get(machineId) == null ? new ArrayList<Integer>() : jobAssignment.get(machineId);
          jobList.add(jobId);
-         jobAssignment.put(machineId, jobList);
-         System.out.println("Job Setted: " + machineId + " with value: " + jobId);
 
-         canRead.signal();
+         jobAssignment.put(machineId, jobList);
+
+         Thread.sleep(1000 * 5);
+
+         System.out.println("Job Setted: " + machineId + " with value: " + jobId);
       }
       finally
       {
@@ -36,11 +33,9 @@ public class SynchedCustomMap implements CustomMap {
    @Override
    public ArrayList<Integer> get(int machineId) throws InterruptedException {
       accessLock.lock();
-      ArrayList<Integer> jobList;
+      ArrayList<Integer> jobList = new ArrayList<Integer>();
       try{
          jobList = jobAssignment.get(machineId);
-
-         canWrite.signal();
       }
       finally
       {
