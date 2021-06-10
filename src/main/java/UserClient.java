@@ -135,7 +135,7 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 					  machineIdInteger = 0;
 				  }
 
-				  arguments = gson.toJson(new GetMachineInformationsRequest(machineIdInteger), GetMachineInformationsRequest.class);
+				  arguments = gson.toJson(new GetMachineInformationRequest(machineIdInteger), GetMachineInformationRequest.class);
 
 				  message = Commands.GET_MACHINE_INFORMATIONS + "*" + arguments;
 
@@ -280,14 +280,15 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 			message = Commands.LOGOFF + "*" + arguments;
 
 			response = sendCommand(message, networkInput, networkOutput);
+			Response<String> responseObject = gson.fromJson(response, Response.class);
 
-			if(response.equals("101")){
-				System.out.println("Response: " + response);
+			if(responseObject.ResponseCode == 101){
+				System.out.println("Response Code:\t" + responseObject.ResponseCode + "\n" + "Response Message:\t" + responseObject.ResponseMessage);
 				sendCommand(Commands.EXIT, networkInput, networkOutput);
 				System.exit(1);
 			}
 			else {
-				System.out.println("Response: " + response);
+				System.out.println("Response Code:\t" + responseObject.ResponseCode + "\n" + "Response Message:\t" + responseObject.ResponseMessage);
 				sendCommand(Commands.EXIT, networkInput, networkOutput);
 				System.exit(0);
 			}

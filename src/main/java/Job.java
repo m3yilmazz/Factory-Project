@@ -1,7 +1,7 @@
 public class Job {
     static final String JOB_STATE_PENDING = "PENDING";
     static final String JOB_STATE_PROCESSING = "PROCESSING";
-    static final String JOB_STATE_DONE = "DONE";
+    static final String JOB_STATE_COMPLETED = "COMPLETED";
 
     int JobUniqueId;
     String JobType;

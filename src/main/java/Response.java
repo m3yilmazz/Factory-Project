@@ -1,9 +1,11 @@
 public class Response<T> {
     int ResponseCode;
-    T ResponseMessage;
+    String ResponseMessage;
+    T ResponseBody;
 
-    Response(int ResponseCode, T ResponseMessage){
+    Response(int ResponseCode, String ResponseMessage, T ResponseBody){
         this.ResponseCode = ResponseCode;
         this.ResponseMessage = ResponseMessage;
+        this.ResponseBody = ResponseBody;
     }
 }

@@ -67,14 +67,16 @@ public class MachineClient extends JFrame implements KeyListener {
 						commandSender.execute();
 					}
 					catch (NumberFormatException e){
-						responseJTextArea.setText("Machine Unique Id can not include a character.");
+						responseJTextArea.setText("Please enter valid Machine Unique Id.");
 					}
 				}
 			}
 		);
 		addMachineJButton.addKeyListener(this);
 		buttonAndResponseCodePanel.add( addMachineJButton );
-		buttonAndResponseCodePanel.add( responseJTextArea );
+
+		JScrollPane responseJScrollPane = new JScrollPane(responseJTextArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		buttonAndResponseCodePanel.add(responseJScrollPane);
 
 		add( machinePropsPanel );
 		add( buttonAndResponseCodePanel );
