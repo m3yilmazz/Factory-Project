@@ -1,13 +1,10 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 
 import javax.swing.*;
 import java.io.PrintWriter;
-import java.lang.reflect.Array;
-import java.util.Iterator;
-import java.util.Map;
+
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
 
@@ -18,7 +15,6 @@ public class CommandSender extends SwingWorker<String, Object> {
     JTextArea responseJTextArea;
     GsonBuilder gsonBuilder = new GsonBuilder();
     Gson gson = gsonBuilder.create();
-    Gson prettyGson = gsonBuilder.setPrettyPrinting().create();
 
     CommandSender(String message, Scanner networkInput, PrintWriter networkOutput, JTextArea responseJTextArea){
         this.message = message;
@@ -134,7 +130,13 @@ public class CommandSender extends SwingWorker<String, Object> {
 
                 case Commands.GET_PENDING_JOB_ORDERS:
                     buffer = new StringBuffer();
-                    GetPendingJobOrdersResponse getPendingJobOrdersResponse = gson.fromJson(response, GetPendingJobOrdersResponse.class);
+                    GetPendingJobOrdersResponse getPendingJobOrdersResponse = new GetPendingJobOrdersResponse();
+                    try{
+                        getPendingJobOrdersResponse = gson.fromJson(response, GetPendingJobOrdersResponse.class);
+                    }catch (JsonSyntaxException e){
+
+                    }
+
                     buffer.append("PENDING JOB ORDERS\n\n");
 
                     buffer.append("CNC JOB ORDERS\n\n");

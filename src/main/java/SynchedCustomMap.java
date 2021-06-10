@@ -23,7 +23,7 @@ public class SynchedCustomMap implements CustomMap {
          jobList = jobAssignment.get(machineId) == null ? new ArrayList<Integer>() : jobAssignment.get(machineId);
          jobList.add(jobId);
          jobAssignment.put(machineId, jobList);
-         System.out.println("Job Setted: " + machineId + " with value: " + jobAssignment.get(machineId));
+         System.out.println("Job Setted: " + machineId + " with value: " + jobId);
 
          canRead.signal();
       }

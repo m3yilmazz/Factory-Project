@@ -17,7 +17,7 @@ public class FactoryServer
 	private static ArrayList<Job> jobs = new ArrayList<Job>();
 	private static ArrayList<User> users = new ArrayList<User>();
 	private static ExecutorService executorService = Executors.newCachedThreadPool();
-	private static CustomMap sharedLocation = new SynchedCustomMap();
+	private static CustomMap jobSchedulingSharedLocation = new SynchedCustomMap();
 
 	static Map<String, String> USERNAME_PASSWORD_MAP = new HashMap<String, String>();
 
@@ -55,7 +55,7 @@ public class FactoryServer
 			Socket client = serverSocket.accept();
 			System.out.println("\nNew client accepted.\n");
 
-			ClientHandler handler = new ClientHandler(client, machines, jobs, users, executorService, sharedLocation, gson, prettyGson);
+			ClientHandler handler = new ClientHandler(client, machines, jobs, users, executorService, jobSchedulingSharedLocation, gson, prettyGson);
 
 			handler.start();
 		}while (true);
@@ -71,18 +71,18 @@ class ClientHandler extends Thread
 	private ArrayList<Job> jobs;
 	private ArrayList<User> users;
 	private ExecutorService executorService;
-	private CustomMap sharedLocation;
+	private CustomMap jobSchedulingSharedLocation;
 	private Gson gson;
 	private Gson prettyGson;
 
-	public ClientHandler(Socket socket, ArrayList<Machine> machines, ArrayList<Job> jobs, ArrayList<User> users, ExecutorService executorService, CustomMap sharedLocation, Gson gson, Gson prettyGson)
+	public ClientHandler(Socket socket, ArrayList<Machine> machines, ArrayList<Job> jobs, ArrayList<User> users, ExecutorService executorService, CustomMap jobSchedulingSharedLocation, Gson gson, Gson prettyGson)
 	{
 		client = socket;
 		this.machines = machines;
 		this.jobs = jobs;
 		this.users = users;
 		this.executorService = executorService;
-		this.sharedLocation = sharedLocation;
+		this.jobSchedulingSharedLocation = jobSchedulingSharedLocation;
 		this.gson = gson;
 		this.prettyGson = prettyGson;
 
@@ -99,7 +99,6 @@ class ClientHandler extends Thread
 
 	public void run() {
 		String received, command, argumentsJsonString;
-		StringBuffer stringBuffer;
 
 		do {
 			try{
@@ -357,7 +356,7 @@ class ClientHandler extends Thread
 					}
 					else {
 						try {
-							List<Integer> jobList = sharedLocation.get(receivedMachineId.MachineId);
+							List<Integer> jobList = jobSchedulingSharedLocation.get(receivedMachineId.MachineId);
 							if(jobList == null){
 								output.println(gson.toJson(getMachineInformationResponse));
 								break;
@@ -504,7 +503,7 @@ class ClientHandler extends Thread
 						for(Machine machine: machines){
 							if(machine.MachineState.equals(Machine.MACHINE_STATE_BUSY)){
 								try {
-									List<Integer> jobList = sharedLocation.get(machine.MachineUniqueId);
+									List<Integer> jobList = jobSchedulingSharedLocation.get(machine.MachineUniqueId);
 									if(jobList == null){
 										getProcessingJobResponse.MACHINES.add(machine);
 										getProcessingJobResponse.JOBS.add(null);
@@ -568,9 +567,9 @@ class ClientHandler extends Thread
 							long delay = productLength / productionSpeed * 1000L;
 							machine.MachineState = "BUSY";
 							job.JobState = "PROCESSING";
-							executorService.execute(new JobAssignmentProducer(sharedLocation, machine.MachineUniqueId, job.JobUniqueId));
+							executorService.execute(new JobAssignmentProducer(jobSchedulingSharedLocation, machine.MachineUniqueId, job.JobUniqueId));
 							System.out.println("Job assigned.");
-							doneJob(machine.MachineUniqueId, job.JobUniqueId, delay);
+							completeJob(machine.MachineUniqueId, job.JobUniqueId, delay);
 							break;
 						}
 					}
@@ -579,7 +578,7 @@ class ClientHandler extends Thread
 		}
 	}
 
-	void doneJob(int machineId, int jobId, long delay){
+	void completeJob(int machineId, int jobId, long delay){
 		TimerTask task = new TimerTask() {
 			public void run() {
 				for(Machine machine: machines){
