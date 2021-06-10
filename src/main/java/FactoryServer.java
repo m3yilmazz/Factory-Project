@@ -316,19 +316,19 @@ class ClientHandler extends Thread
 					if (machines.size() != 0) {
 						for (Machine machine : machines)
 							if (machine.MachineType.equals(JobTypes.CNC))
-								getMachinesResponse.CNC_MACHINES.add(machine);
+								getMachinesResponse.CNCMachines.add(machine);
 
 						for (Machine machine : machines)
 							if (machine.MachineType.equals(JobTypes.DOKUM))
-								getMachinesResponse.DOKUM_MACHINES.add(machine);
+								getMachinesResponse.DOKUMMachines.add(machine);
 
 						for (Machine machine : machines)
 							if (machine.MachineType.equals(JobTypes.KILIF))
-								getMachinesResponse.KILIF_MACHINES.add(machine);
+								getMachinesResponse.KILIFMachines.add(machine);
 
 						for (Machine machine : machines)
 							if (machine.MachineType.equals(JobTypes.KAPLAMA))
-								getMachinesResponse.KAPLAMA_MACHINES.add(machine);
+								getMachinesResponse.KAPLAMAMachines.add(machine);
 
 						output.println(gson.toJson(getMachinesResponse));
 					} else {
@@ -374,12 +374,12 @@ class ClientHandler extends Thread
 
 					for (Machine machine : machines) {
 						if (machine.MachineUniqueId == receivedMachineId.MachineId) {
-							getMachineInformationResponse.MACHINE = machine;
+							getMachineInformationResponse.Machine = machine;
 							break;
 						}
 					}
 
-					if (getMachineInformationResponse.MACHINE == null) {
+					if (getMachineInformationResponse.Machine == null) {
 						output.println(220);
 					} else {
 						jobsArrayListFeature = executorService.submit(new JobAssignmentConsumer(jobSchedulingSharedLocation, receivedMachineId.MachineId));
@@ -407,7 +407,7 @@ class ClientHandler extends Thread
 							for (Integer jobId : jobsArrayList)
 								if (job.JobUniqueId == jobId)
 									if (job.JobState.equals(Job.JOB_STATE_DONE))
-										getMachineInformationResponse.COMPLETED_JOBS.add(job);
+										getMachineInformationResponse.CompletedJobs.add(job);
 
 
 						output.println(gson.toJson(getMachineInformationResponse));
@@ -520,25 +520,25 @@ class ClientHandler extends Thread
 					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
 							if (job.JobType.equals(JobTypes.CNC)) {
-								getPendingJobOrdersResponse.CNC_JOB_ORDERS.add(job);
+								getPendingJobOrdersResponse.CNCJobOrders.add(job);
 								isCNCPendingJobExist = true;
 							}
 					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
 							if (job.JobType.equals(JobTypes.DOKUM)) {
-								getPendingJobOrdersResponse.DOKUM_JOB_ORDERS.add(job);
+								getPendingJobOrdersResponse.DOKUMJobOrders.add(job);
 								isDOKUMPendingJobExist = true;
 							}
 					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
 							if (job.JobType.equals(JobTypes.KILIF)) {
-								getPendingJobOrdersResponse.KILIF_JOB_ORDERS.add(job);
+								getPendingJobOrdersResponse.KILIFJobOrders.add(job);
 								isKILIFPendingJobExist = true;
 							}
 					for (Job job : jobs)
 						if (job.JobState.equals(Job.JOB_STATE_PENDING))
 							if (job.JobType.equals(JobTypes.KAPLAMA)) {
-								getPendingJobOrdersResponse.KAPLAMA_JOB_ORDERS.add(job);
+								getPendingJobOrdersResponse.KAPLAMAJobOrders.add(job);
 								isKAPLAMAPendingJobExist = true;
 							}
 
@@ -558,7 +558,7 @@ class ClientHandler extends Thread
 					}
 					if (machines.size() != 0) {
 						for (Machine machine : machines)
-							getMachineStatesResponse.MACHINES.add(machine);
+							getMachineStatesResponse.Machines.add(machine);
 
 						output.println(gson.toJson(getMachineStatesResponse));
 					} else {
@@ -596,8 +596,8 @@ class ClientHandler extends Thread
 								}
 
 								if (jobsArrayList == null) {
-									getProcessingJobResponse.MACHINES.add(machine);
-									getProcessingJobResponse.JOBS.add(null);
+									getProcessingJobResponse.Machines.add(machine);
+									getProcessingJobResponse.Jobs.add(null);
 									continue;
 								}
 
@@ -605,8 +605,8 @@ class ClientHandler extends Thread
 									for (Integer jobId1 : jobsArrayList) {
 										if (job.JobUniqueId == jobId1) {
 											if (job.JobState.equals(Job.JOB_STATE_PROCESSING)) {
-												getProcessingJobResponse.MACHINES.add(machine);
-												getProcessingJobResponse.JOBS.add(job);
+												getProcessingJobResponse.Machines.add(machine);
+												getProcessingJobResponse.Jobs.add(job);
 											}
 										}
 									}
@@ -614,7 +614,7 @@ class ClientHandler extends Thread
 							}
 						}
 
-						if (getProcessingJobResponse.MACHINES.size() == 0) {
+						if (getProcessingJobResponse.Machines.size() == 0) {
 							output.println(240);
 						} else {
 							output.println(gson.toJson(getProcessingJobResponse));

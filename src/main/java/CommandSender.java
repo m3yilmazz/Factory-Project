@@ -58,16 +58,16 @@ public class CommandSender extends SwingWorker<String, Object> {
                             buffer = new StringBuffer();
                             GetMachinesResponse getMachinesResponse = gson.fromJson(response, GetMachinesResponse.class);
                             buffer.append("CNC MACHINES\n\n");
-                            for (Machine machine : getMachinesResponse.CNC_MACHINES)
+                            for (Machine machine : getMachinesResponse.CNCMachines)
                                 buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
                             buffer.append("DÖKÜM MACHINES\n\n");
-                            for (Machine machine : getMachinesResponse.DOKUM_MACHINES)
+                            for (Machine machine : getMachinesResponse.DOKUMMachines)
                                 buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
                             buffer.append("KILIF MACHINES\n\n");
-                            for (Machine machine : getMachinesResponse.KILIF_MACHINES)
+                            for (Machine machine : getMachinesResponse.KILIFMachines)
                                 buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
                             buffer.append("KAPLAMA MACHINES\n\n");
-                            for (Machine machine : getMachinesResponse.KAPLAMA_MACHINES)
+                            for (Machine machine : getMachinesResponse.KAPLAMAMachines)
                                 buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
                             responseJTextArea.setText(String.valueOf(buffer));
                         }
@@ -84,14 +84,14 @@ public class CommandSender extends SwingWorker<String, Object> {
                             GetMachineInformationResponse getMachineInformationResponse = gson.fromJson(response, GetMachineInformationResponse.class);
                             buffer.append("MACHINE INFORMATIONS\n\n");
                             buffer.append(machineInformationFormatter(
-                                    getMachineInformationResponse.MACHINE.MachineUniqueId,
-                                    getMachineInformationResponse.MACHINE.MachineName,
-                                    getMachineInformationResponse.MACHINE.MachineType,
-                                    getMachineInformationResponse.MACHINE.MachineProductionSpeed,
-                                    getMachineInformationResponse.MACHINE.MachineState
+                                    getMachineInformationResponse.Machine.MachineUniqueId,
+                                    getMachineInformationResponse.Machine.MachineName,
+                                    getMachineInformationResponse.Machine.MachineType,
+                                    getMachineInformationResponse.Machine.MachineProductionSpeed,
+                                    getMachineInformationResponse.Machine.MachineState
                             ));
                             buffer.append("COMPLETED JOBS\n\n");
-                            for (Job job : getMachineInformationResponse.COMPLETED_JOBS)
+                            for (Job job : getMachineInformationResponse.CompletedJobs)
                                 buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
                             responseJTextArea.setText(String.valueOf(buffer));
                         }
@@ -121,16 +121,16 @@ public class CommandSender extends SwingWorker<String, Object> {
                             }
                             buffer.append("PENDING JOB ORDERS\n\n");
                             buffer.append("CNC JOB ORDERS\n\n");
-                            for (Job job : getPendingJobOrdersResponse.CNC_JOB_ORDERS)
+                            for (Job job : getPendingJobOrdersResponse.CNCJobOrders)
                                 buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
                             buffer.append("DÖKÜM JOB ORDERS\n\n");
-                            for (Job job : getPendingJobOrdersResponse.DOKUM_JOB_ORDERS)
+                            for (Job job : getPendingJobOrdersResponse.DOKUMJobOrders)
                                 buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
                             buffer.append("KILIF JOB ORDERS\n\n");
-                            for (Job job : getPendingJobOrdersResponse.KILIF_JOB_ORDERS)
+                            for (Job job : getPendingJobOrdersResponse.KILIFJobOrders)
                                 buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
                             buffer.append("KAPLAMA JOB ORDERS\n\n");
-                            for (Job job : getPendingJobOrdersResponse.KAPLAMA_JOB_ORDERS)
+                            for (Job job : getPendingJobOrdersResponse.KAPLAMAJobOrders)
                                 buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
                             responseJTextArea.setText(String.valueOf(buffer));
                         }
@@ -144,7 +144,7 @@ public class CommandSender extends SwingWorker<String, Object> {
                         default -> {
                             buffer = new StringBuffer();
                             GetMachineStatesResponse getMachineStatesResponse = gson.fromJson(response, GetMachineStatesResponse.class);
-                            for (Machine machine : getMachineStatesResponse.MACHINES)
+                            for (Machine machine : getMachineStatesResponse.Machines)
                                 buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
                             responseJTextArea.setText(String.valueOf(buffer));
                         }
@@ -158,22 +158,22 @@ public class CommandSender extends SwingWorker<String, Object> {
                         default -> {
                             buffer = new StringBuffer();
                             GetProcessingJobResponse getProcessingJobResponse = gson.fromJson(response, GetProcessingJobResponse.class);
-                            for (int index = 0; index < getProcessingJobResponse.MACHINES.size(); ++index) {
+                            for (int index = 0; index < getProcessingJobResponse.Machines.size(); ++index) {
                                 buffer.append("MACHINE\n\n");
                                 buffer.append(machineInformationFormatter(
-                                        getProcessingJobResponse.MACHINES.get(index).MachineUniqueId,
-                                        getProcessingJobResponse.MACHINES.get(index).MachineName,
-                                        getProcessingJobResponse.MACHINES.get(index).MachineType,
-                                        getProcessingJobResponse.MACHINES.get(index).MachineProductionSpeed,
-                                        getProcessingJobResponse.MACHINES.get(index).MachineState
+                                        getProcessingJobResponse.Machines.get(index).MachineUniqueId,
+                                        getProcessingJobResponse.Machines.get(index).MachineName,
+                                        getProcessingJobResponse.Machines.get(index).MachineType,
+                                        getProcessingJobResponse.Machines.get(index).MachineProductionSpeed,
+                                        getProcessingJobResponse.Machines.get(index).MachineState
                                 ));
 
                                 buffer.append("PROCESSING JOB IN THE MACHINE\n\n");
                                 buffer.append(jobInformationFormatter(
-                                        getProcessingJobResponse.JOBS.get(index).JobUniqueId,
-                                        getProcessingJobResponse.JOBS.get(index).JobType,
-                                        getProcessingJobResponse.JOBS.get(index).JobLength,
-                                        getProcessingJobResponse.JOBS.get(index).JobState
+                                        getProcessingJobResponse.Jobs.get(index).JobUniqueId,
+                                        getProcessingJobResponse.Jobs.get(index).JobType,
+                                        getProcessingJobResponse.Jobs.get(index).JobLength,
+                                        getProcessingJobResponse.Jobs.get(index).JobState
                                 ));
                             }
                             responseJTextArea.setText(String.valueOf(buffer));
