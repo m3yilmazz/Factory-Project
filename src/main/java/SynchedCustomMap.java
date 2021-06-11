@@ -13,6 +13,7 @@ public class SynchedCustomMap implements CustomMap {
    {
       accessLock.lock();
       ArrayList<Integer> jobList = new ArrayList<Integer>() ;
+
       try
       {
          jobList = jobAssignment.get(machineId) == null ? new ArrayList<Integer>() : jobAssignment.get(machineId);
@@ -20,12 +21,9 @@ public class SynchedCustomMap implements CustomMap {
 
          jobAssignment.put(machineId, jobList);
 
-         Thread.sleep(1000 * 5);
-
          System.out.println("Job Setted: " + machineId + " with value: " + jobId);
       }
-      finally
-      {
+      finally {
          accessLock.unlock();
       }
    }
@@ -33,15 +31,28 @@ public class SynchedCustomMap implements CustomMap {
    @Override
    public ArrayList<Integer> get(int machineId) throws InterruptedException {
       accessLock.lock();
+
       ArrayList<Integer> jobList = new ArrayList<Integer>();
+
       try{
          jobList = jobAssignment.get(machineId);
       }
-      finally
-      {
+      finally{
          accessLock.unlock();
       }
 
       return jobList;
+   }
+
+   @Override
+   public void remove(int machineId) throws InterruptedException {
+      accessLock.lock();
+
+      try {
+         jobAssignment.remove(machineId);
+      }
+      finally {
+         accessLock.unlock();
+      }
    }
 }

@@ -3,10 +3,7 @@ import com.google.gson.GsonBuilder;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.awt.event.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -31,11 +28,18 @@ public class MachineClient extends JFrame implements KeyListener {
 	private final JTextField machineTypeJTextField = new JTextField();
 	private final JTextField machineProductionSpeedJTextField = new JTextField();
 	private final JButton addMachineJButton = new JButton( "Add Machine" );
+	private final JButton removeMachineJButton = new JButton( "Remove Machine" );
 	private final JTextArea responseJTextArea = new JTextArea();
-	
+
+	Window window;
+	JFrame jFrame;
+
 	MachineClient(Scanner networkInput, PrintWriter networkOutput, Gson gson){
 		super( "Machine Client" );
 		setLayout( new GridLayout( 2, 1, 10, 10 ) );
+
+		window = this;
+		jFrame = this;
 
 		machinePropsPanel.add( new JLabel( "Machine Unique Id" ) );
 		machinePropsPanel.add( machineUniqueIdJTextField );
@@ -48,7 +52,7 @@ public class MachineClient extends JFrame implements KeyListener {
 		addMachineJButton.addActionListener( new ActionListener() {
 				public void actionPerformed( ActionEvent event )
 				{
-					String message, machineIdString, machineName, machineType ,machineProductionSpeed, arguments;
+					String request, machineIdString, machineName, machineType ,machineProductionSpeed;
 					int machineId;
 
 					machineIdString = machineUniqueIdJTextField.getText();
@@ -59,12 +63,24 @@ public class MachineClient extends JFrame implements KeyListener {
 					try {
 						machineId = Integer.parseInt(machineIdString);
 
-						arguments = gson.toJson(new AddMachineRequest(machineId, machineName, machineType, machineProductionSpeed));
+						request = gson.toJson(new Request<AddMachineRequest>(Commands.ADD_MACHINE, new AddMachineRequest(machineId, machineName, machineType, machineProductionSpeed)));
 
-						message = Commands.ADD_MACHINE + "*" + arguments;
-
-						CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
-						commandSender.execute();
+						MachineCommandSender machineCommandSender = new MachineCommandSender(
+								request,
+								networkInput,
+								networkOutput,
+								responseJTextArea,
+								machineUniqueIdJTextField,
+								machineNameJTextField,
+								machineTypeJTextField,
+								machineProductionSpeedJTextField,
+								buttonAndResponseCodePanel,
+								addMachineJButton,
+								removeMachineJButton,
+								window,
+								jFrame
+						);
+						machineCommandSender.execute();
 					}
 					catch (NumberFormatException e){
 						responseJTextArea.setText("Please enter valid Machine Unique Id.");
@@ -77,6 +93,30 @@ public class MachineClient extends JFrame implements KeyListener {
 
 		JScrollPane responseJScrollPane = new JScrollPane(responseJTextArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 		buttonAndResponseCodePanel.add(responseJScrollPane);
+
+		removeMachineJButton.addActionListener( new ActionListener() {
+			public void actionPerformed( ActionEvent event ) {
+				 String request = gson.toJson(new Request<MachineIdRequest>(Commands.REMOVE_MACHINE, new MachineIdRequest(Integer.parseInt(machineUniqueIdJTextField.getText()))));
+
+				 MachineCommandSender machineCommandSender = new MachineCommandSender(
+						 request,
+						 networkInput,
+						 networkOutput,
+						 responseJTextArea,
+						 machineUniqueIdJTextField,
+						 machineNameJTextField,
+						 machineTypeJTextField,
+						 machineProductionSpeedJTextField,
+						 buttonAndResponseCodePanel,
+						 addMachineJButton,
+						 removeMachineJButton,
+						 window,
+						 jFrame
+				 );
+				 machineCommandSender.execute();
+				}
+			}
+		);
 
 		add( machinePropsPanel );
 		add( buttonAndResponseCodePanel );
@@ -106,7 +146,7 @@ public class MachineClient extends JFrame implements KeyListener {
 			System.exit(1);
 		}
 		MachineClient machineClient = new MachineClient(networkInput, networkOutput, gson);
-		machineClient.setDefaultCloseOperation( EXIT_ON_CLOSE );
+		machineClient.setDefaultCloseOperation(EXIT_ON_CLOSE);
 	}
 
 	@Override

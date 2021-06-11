@@ -13,7 +13,6 @@ public class SynchedCustomArrayList<T> implements CustomArrayList<T> {
 
         try
         {
-            Thread.sleep(1000 * 5);
             arrayList.add(object);
         }
         finally

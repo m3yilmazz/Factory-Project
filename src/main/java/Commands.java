@@ -2,6 +2,7 @@ public class Commands {
     static final String LOGIN = "LOGIN";
     static final String LOGOFF = "LOGOFF";
     static final String ADD_MACHINE = "ADD";
+    static final String REMOVE_MACHINE = "RMV";
     static final String GET_MACHINES = "GET";
     static final String GET_MACHINE_INFORMATIONS = "GETMI";
     static final String SEND_JOB_ORDER = "SEND";

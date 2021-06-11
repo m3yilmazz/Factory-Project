@@ -11,6 +11,9 @@ public class ErrorResponses {
     public static final Response<String> RESPONSE_231 = new Response<String>(231, ResponseMessages.RESPONSE_MESSAGE_231, null);
     public static final Response<String> RESPONSE_232 = new Response<String>(232, ResponseMessages.RESPONSE_MESSAGE_232, null);
     public static final Response<String> RESPONSE_240 = new Response<String>(240, ResponseMessages.RESPONSE_MESSAGE_240, null);
+    public static final Response<String> RESPONSE_280 = new Response<String>(280, ResponseMessages.RESPONSE_MESSAGE_280, null);
+    public static final Response<String> RESPONSE_281 = new Response<String>(281, ResponseMessages.RESPONSE_MESSAGE_281, null);
+
     public static final Response<String> RESPONSE_400 = new Response<String>(400, ResponseMessages.RESPONSE_MESSAGE_400, null);
     public static final Response<String> RESPONSE_410 = new Response<String>(410, ResponseMessages.RESPONSE_MESSAGE_410, null);
     public static final Response<String> RESPONSE_420 = new Response<String>(420, ResponseMessages.RESPONSE_MESSAGE_420, null);

@@ -1,7 +1,9 @@
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Type;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -113,32 +115,35 @@ class ClientHandler extends Thread
 
 			String[] splitReceived = received.split("\\u002A");
 
-			command = splitReceived[0];
+			//command = splitReceived[0];
+			Request<String> requestJson = gson.fromJson(received, Request.class);
+			command = requestJson.RequestCommand;
 
 			String metric;
-			User receivedUser;
+			User receivedUser = new User(null, null);
 
 			switch (command) {
 				case Commands.LOGIN -> {
 					try {
-						argumentsJsonString = splitReceived[1];
+						Type type = new TypeToken<Request<LoginRequest>>() {}.getType();
+						Request<LoginRequest> requestObject = gson.fromJson(received, type);
 
-						try {
-							receivedUser = gson.fromJson(argumentsJsonString, User.class);
-							receivedUser.UserStatus = User.OFFLINE;
-						} catch (JsonParseException e) {
-							output.println(gson.toJson(ErrorResponses.RESPONSE_410));
-							break;
-						}
-					} catch (ArrayIndexOutOfBoundsException e) {
+						receivedUser.UserName = requestObject.RequestBody.UserName;
+						receivedUser.UserPassword = requestObject.RequestBody.UserPassword;
+						receivedUser.UserStatus = User.OFFLINE;
+					}
+					catch (JsonSyntaxException e) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 						break;
 					}
+
 					if (receivedUser.UserName.isEmpty() || receivedUser.UserPassword.isEmpty()) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 						break;
 					}
+
 					boolean isUserNameOrPasswordIsWrong = true;
+
 					for (User user : users) {
 						if (receivedUser.UserName.equals(user.UserName)) {
 							if (user.UserStatus.equals(User.ONLINE)) {
@@ -160,6 +165,7 @@ class ClientHandler extends Thread
 							}
 						}
 					}
+
 					if (isUserNameOrPasswordIsWrong) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_200));
 					}
@@ -167,17 +173,13 @@ class ClientHandler extends Thread
 
 				case Commands.LOGOFF -> {
 					try {
-						argumentsJsonString = splitReceived[1];
+						Type type = new TypeToken<Request<LoginRequest>>() {}.getType();
+						Request<LoginRequest> requestObject = gson.fromJson(received, type);
 
-						try {
-							receivedUser = gson.fromJson(argumentsJsonString, User.class);
-						}
-						catch (JsonParseException e) {
-							output.println(gson.toJson(ErrorResponses.RESPONSE_410));
-							break;
-						}
+						receivedUser.UserName = requestObject.RequestBody.UserName;
+						receivedUser.UserPassword = requestObject.RequestBody.UserPassword;
 					}
-					catch (ArrayIndexOutOfBoundsException e) {
+					catch (JsonSyntaxException e) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 						break;
 					}
@@ -187,7 +189,8 @@ class ClientHandler extends Thread
 							output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 							break;
 						}
-					} catch (NullPointerException e) {
+					}
+					catch (NullPointerException e) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 						break;
 					}
@@ -208,22 +211,20 @@ class ClientHandler extends Thread
 				}
 
 				case Commands.ADD_MACHINE -> {
-					Machine receivedMachine;
+					Machine receivedMachine = new Machine(0, null, null, null);
 					boolean machineIdIsAlreadyExist = false;
 
 					try {
-						argumentsJsonString = splitReceived[1];
+						Type type = new TypeToken<Request<AddMachineRequest>>() {}.getType();
+						Request<AddMachineRequest> requestObject = gson.fromJson(received, type);
 
-						try {
-							receivedMachine = gson.fromJson(argumentsJsonString, Machine.class);
-							receivedMachine.MachineState = Machine.MACHINE_STATE_EMPTY;
-						}
-						catch (JsonParseException e) {
-							output.println(gson.toJson(ErrorResponses.RESPONSE_410));
-							break;
-						}
+						receivedMachine.MachineUniqueId = requestObject.RequestBody.MachineUniqueId;
+						receivedMachine.MachineName = requestObject.RequestBody.MachineName;
+						receivedMachine.MachineType = requestObject.RequestBody.MachineType;
+						receivedMachine.MachineProductionSpeed = requestObject.RequestBody.MachineProductionSpeed;
+						receivedMachine.MachineState = Machine.MACHINE_STATE_EMPTY;
 					}
-					catch (ArrayIndexOutOfBoundsException e) {
+					catch (JsonSyntaxException e) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 						break;
 					}
@@ -283,7 +284,7 @@ class ClientHandler extends Thread
 							if (metric.equals(JobTypes.METRICS.get(receivedMachine.MachineType))) {
 								executorService.execute(new ArrayListProducer<Machine>(machinesSharedLocation, receivedMachine));
 
-								output.println(gson.toJson(new Response<String>(110, ResponseMessages.RESPONSE_MESSAGE_110, null)));
+								output.println(gson.toJson(SuccessfulResponses.RESPONSE_110));
 
 								System.out.println(
 									"Added Machine: " +
@@ -302,6 +303,71 @@ class ClientHandler extends Thread
 						catch (ArrayIndexOutOfBoundsException e){
 							output.println(gson.toJson(ErrorResponses.RESPONSE_212));
 						}
+					}
+				}
+
+				case Commands.REMOVE_MACHINE -> {
+					MachineIdRequest receivedMachineId = new MachineIdRequest(0);
+					boolean isRemovingSuccessful = false;
+					Machine removedMachine = new Machine(0, null, null, null);
+					try {
+						Type type = new TypeToken<Request<MachineIdRequest>>() {}.getType();
+						Request<MachineIdRequest> requestObject = gson.fromJson(received, type);
+
+						receivedMachineId.MachineId = requestObject.RequestBody.MachineId;
+
+						if(receivedMachineId.MachineId == 0){
+							output.println(gson.toJson(ErrorResponses.RESPONSE_410));
+							break;
+						}
+					}
+					catch (JsonSyntaxException e) {
+						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
+						break;
+					}
+
+					machinesFuture = executorService.submit(new ArrayListConsumer<Machine>(machinesSharedLocation));
+
+					try {
+						machines = machinesFuture.get();
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+					}
+
+					if(machines.size() == 0){
+						output.println(gson.toJson(ErrorResponses.RESPONSE_420));
+						break;
+					}
+
+					for (Machine machine : machines) {
+						if (machine.MachineUniqueId == receivedMachineId.MachineId) {
+							if(machine.MachineState.equals(Machine.MACHINE_STATE_BUSY)){
+								output.println(gson.toJson(ErrorResponses.RESPONSE_281));
+								break;
+							}
+							removedMachine = machine;
+
+							executorService.execute(new JobAssignmentRemover(jobSchedulingSharedLocation, receivedMachineId.MachineId));
+							machines.remove(machine);
+
+							isRemovingSuccessful = true;
+							break;
+						}
+					}
+
+					if(isRemovingSuccessful){
+						output.println(gson.toJson(SuccessfulResponses.RESPONSE_180));
+						System.out.println(
+								"Removed Machine: " +
+								"Machine Unique Id: " + removedMachine.MachineUniqueId + ", " +
+								"Machine Name: " + removedMachine.MachineName + ", " +
+								"Machine Type: " + removedMachine.MachineType + ", " +
+								"Machine Production Speed: " + removedMachine.MachineProductionSpeed + ", " +
+								"Machine State: " + removedMachine.MachineState
+						);
+					}
+					else {
+						output.println(gson.toJson(ErrorResponses.RESPONSE_280));
 					}
 				}
 
@@ -335,30 +401,26 @@ class ClientHandler extends Thread
 
 						output.println(gson.toJson(new Response<GetMachinesResponse>(150, ResponseMessages.RESPONSE_MESSAGE_150, getMachinesResponse)));
 					} else {
-						output.println(gson.toJson(new Response<GetMachinesResponse>(420, ResponseMessages.RESPONSE_MESSAGE_420, null)));
+						output.println(gson.toJson(ErrorResponses.RESPONSE_420));
 					}
 				}
 
 				case Commands.GET_MACHINE_INFORMATIONS -> {
-					GetMachineInformationRequest receivedMachineId;
+					MachineIdRequest receivedMachineId = new MachineIdRequest(0);
 					GetMachineInformationResponse getMachineInformationResponse = new GetMachineInformationResponse();
 
 					try {
-						argumentsJsonString = splitReceived[1];
+						Type type = new TypeToken<Request<MachineIdRequest>>() {}.getType();
+						Request<MachineIdRequest> requestObject = gson.fromJson(received, type);
 
-						try {
-							receivedMachineId = gson.fromJson(argumentsJsonString, GetMachineInformationRequest.class);
+						receivedMachineId.MachineId = requestObject.RequestBody.MachineId;
 
-							if(receivedMachineId.MachineId == 0){
-								output.println(gson.toJson(ErrorResponses.RESPONSE_410));
-								break;
-							}
-						} catch (JsonParseException e) {
+						if(receivedMachineId.MachineId == 0){
 							output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 							break;
 						}
 					}
-					catch (ArrayIndexOutOfBoundsException e) {
+					catch (JsonSyntaxException e) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 						break;
 					}
@@ -385,7 +447,8 @@ class ClientHandler extends Thread
 
 					if (getMachineInformationResponse.Machine == null) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_220));
-					} else {
+					}
+					else {
 						jobsArrayListFeature = executorService.submit(new JobAssignmentConsumer(jobSchedulingSharedLocation, receivedMachineId.MachineId));
 
 						try {
@@ -426,22 +489,19 @@ class ClientHandler extends Thread
 				}
 
 				case Commands.SEND_JOB_ORDER -> {
-					Job receivedJob;
+					Job receivedJob = new Job(0, null, null);
 					boolean isJobIdAlreadyExist = false;
 
 					try {
-						argumentsJsonString = splitReceived[1];
+						Type type = new TypeToken<Request<SendJobOrderRequest>>() {}.getType();
+						Request<SendJobOrderRequest> requestObject = gson.fromJson(received, type);
 
-						try {
-							receivedJob = gson.fromJson(argumentsJsonString, Job.class);
-							receivedJob.JobState = Job.JOB_STATE_PENDING;
-						}
-						catch (JsonParseException e) {
-							output.println(gson.toJson(ErrorResponses.RESPONSE_410));
-							break;
-						}
+						receivedJob.JobUniqueId = requestObject.RequestBody.JobUniqueId;
+						receivedJob.JobType = requestObject.RequestBody.JobType;
+						receivedJob.JobLength = requestObject.RequestBody.JobLength;
+						receivedJob.JobState = Job.JOB_STATE_PENDING;
 					}
-					catch (ArrayIndexOutOfBoundsException e) {
+					catch (JsonSyntaxException e) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_410));
 						break;
 					}

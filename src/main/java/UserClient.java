@@ -67,7 +67,7 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 		loginJButton.addActionListener( new ActionListener() {
 				public void actionPerformed( ActionEvent event)
 				{
-					String message, userName, userPassword, arguments;
+					String request, userName, userPassword;
 
 					userName = userNameJTextField.getText();
 					userPassword = userPasswordJTextField.getText();
@@ -75,12 +75,10 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 					UserName = userName;
 					UserPassword = userPassword;
 
-					arguments = gson.toJson(new LoginRequest(userName, userPassword));
-
-					message = Commands.LOGIN + "*" + arguments;
+					request = gson.toJson(new Request<LoginRequest>(Commands.LOGIN, new LoginRequest(userName, userPassword)));
 
 					LoginCommandSender loginCommandSender = new LoginCommandSender(
-							message,
+							request,
 							networkInput,
 							networkOutput,
 							loginResponseJTextArea,
@@ -107,7 +105,9 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 				{
 					responseJTextArea.setText("Fetching data...");
 
-					CommandSender commandSender = new CommandSender(Commands.GET_MACHINES, networkInput, networkOutput, responseJTextArea);
+					String request = gson.toJson(new Request<String>(Commands.GET_MACHINES, null));
+
+					CommandSender commandSender = new CommandSender(request, networkInput, networkOutput, responseJTextArea);
 					commandSender.execute();
 				}
 			}
@@ -123,7 +123,7 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 		getMachineInformationsJButton.addActionListener( new ActionListener() {
 			  public void actionPerformed( ActionEvent event )
 			  {
-				  String message, machineId, arguments;
+				  String request, machineId;
 				  int machineIdInteger;
 
 				  machineId = machineUniqueIdJTextField.getText();
@@ -135,13 +135,11 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 					  machineIdInteger = 0;
 				  }
 
-				  arguments = gson.toJson(new GetMachineInformationRequest(machineIdInteger), GetMachineInformationRequest.class);
-
-				  message = Commands.GET_MACHINE_INFORMATIONS + "*" + arguments;
+				  request = gson.toJson(new Request<MachineIdRequest>(Commands.GET_MACHINE_INFORMATIONS, new MachineIdRequest(machineIdInteger)));
 
 				  responseJTextArea.setText("Fetching data...");
 
-				  CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
+				  CommandSender commandSender = new CommandSender(request, networkInput, networkOutput, responseJTextArea);
 				  commandSender.execute();
 			  }
 		  }
@@ -159,7 +157,7 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 		sendJobOrderJButton.addActionListener( new ActionListener() {
 				 public void actionPerformed( ActionEvent event )
 				 {
-					 String message, jobId, jobType, jobLength, arguments;
+					 String request, jobId, jobType, jobLength;
 					 int jobIdInteger;
 
 					 jobId = jobOrderUniqueIdJTextField.getText();
@@ -173,13 +171,11 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 						 jobIdInteger = 0;
 					 }
 
-					 arguments = gson.toJson(new SendJobOrderRequest(jobIdInteger, jobType, jobLength));
-
-					 message = Commands.SEND_JOB_ORDER  + "*" + arguments;
+					 request = gson.toJson(new Request<SendJobOrderRequest>(Commands.SEND_JOB_ORDER, new SendJobOrderRequest(jobIdInteger, jobType, jobLength)));
 
 					 responseJTextArea.setText("Fetching data...");
 
-					 CommandSender commandSender = new CommandSender(message, networkInput, networkOutput, responseJTextArea);
+					 CommandSender commandSender = new CommandSender(request, networkInput, networkOutput, responseJTextArea);
 					 commandSender.execute();
 				 }
 			 }
@@ -191,7 +187,9 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 			  {
 				  responseJTextArea.setText("Fetching data...");
 
-				  CommandSender commandSender = new CommandSender(Commands.GET_PENDING_JOB_ORDERS, networkInput, networkOutput, responseJTextArea);
+				  String request = gson.toJson(new Request<String>(Commands.GET_PENDING_JOB_ORDERS, null));
+
+				  CommandSender commandSender = new CommandSender(request, networkInput, networkOutput, responseJTextArea);
 				  commandSender.execute();
 			  }
 		  }
@@ -203,7 +201,9 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 			  {
 				  responseJTextArea.setText("Fetching data...");
 
-				  CommandSender commandSender = new CommandSender(Commands.GET_MACHINE_STATES, networkInput, networkOutput, responseJTextArea);
+				  String request = gson.toJson(new Request<String>(Commands.GET_MACHINE_STATES, null));
+
+				  CommandSender commandSender = new CommandSender(request, networkInput, networkOutput, responseJTextArea);
 				  commandSender.execute();
 			  }
 		  }
@@ -215,7 +215,9 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 			   {
 				   responseJTextArea.setText("Fetching data...");
 
-				   CommandSender commandSender = new CommandSender(Commands.GET_PROCESSING_JOB_ORDERS, networkInput, networkOutput, responseJTextArea);
+				   String request = gson.toJson(new Request<String>(Commands.GET_PROCESSING_JOB_ORDERS, null));
+
+				   CommandSender commandSender = new CommandSender(request, networkInput, networkOutput, responseJTextArea);
 				   commandSender.execute();
 			   }
 		   }
@@ -256,13 +258,12 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 			System.exit(1);
 		}
 		UserClient userClient = new UserClient(networkInput, networkOutput, gson);
-		//userClient.setDefaultCloseOperation( EXIT_ON_CLOSE );
 	}
 
-	private static String sendCommand(String message, Scanner networkInput, PrintWriter networkOutput)
+	private static String sendCommand(String request, Scanner networkInput, PrintWriter networkOutput)
 	{
 		String responseCode;
-		networkOutput.println(message);
+		networkOutput.println(request);
 		responseCode = networkInput.nextLine();
 		return  responseCode;
 	}
@@ -272,28 +273,12 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 
 	@Override
 	public void windowClosing(WindowEvent e) {
-		Thread newThread = new Thread(() -> {
-			String message, arguments, response;
+		String request = gson.toJson(new Request<LoginRequest>(Commands.LOGOFF, new LoginRequest(UserName, UserPassword)));
 
-			arguments = gson.toJson(new LoginRequest(UserName, UserPassword));
+		CommandSender commandSender = new CommandSender(request, networkInput, networkOutput, null);
+		commandSender.execute();
 
-			message = Commands.LOGOFF + "*" + arguments;
-
-			response = sendCommand(message, networkInput, networkOutput);
-			Response<String> responseObject = gson.fromJson(response, Response.class);
-
-			if(responseObject.ResponseCode == 101){
-				System.out.println("Response Code:\t" + responseObject.ResponseCode + "\n" + "Response Message:\t" + responseObject.ResponseMessage);
-				sendCommand(Commands.EXIT, networkInput, networkOutput);
-				System.exit(1);
-			}
-			else {
-				System.out.println("Response Code:\t" + responseObject.ResponseCode + "\n" + "Response Message:\t" + responseObject.ResponseMessage);
-				sendCommand(Commands.EXIT, networkInput, networkOutput);
-				System.exit(0);
-			}
-		});
-		newThread.start();
+		System.exit(1);
 	}
 
 	@Override

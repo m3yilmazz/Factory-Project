@@ -1,12 +1,10 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 
 import javax.swing.*;
 import java.io.PrintWriter;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
@@ -38,12 +36,23 @@ public class CommandSender extends SwingWorker<String, Object> {
     {
         String response, command;
         StringBuffer buffer = new StringBuffer();
+
         try
         {
             response = get();
-            command = message.split("\\u002A")[0];
+
+            Request<String> requestObject = gson.fromJson(message, Request.class);
+            command = requestObject.RequestCommand;
+
             switch (command){
-                case Commands.ADD_MACHINE, Commands.SEND_JOB_ORDER -> {
+                case Commands.LOGOFF -> {
+                    Response<String> responseObject = gson.fromJson(response, Response.class);
+                    System.out.println("Response Code:\t" + responseObject.ResponseCode + "\n" + "Response Message:\t" + responseObject.ResponseMessage);
+                    CommandSender commandSender = new CommandSender(Commands.EXIT, networkInput, networkOutput, null);
+                    commandSender.execute();
+                }
+
+                case Commands.SEND_JOB_ORDER -> {
                     Response<String> responseObject = gson.fromJson(response, Response.class);
                     responseJTextArea.setText("Response Code:\t" + responseObject.ResponseCode + "\n" + "Response Message:\t" + responseObject.ResponseMessage);
                 }
@@ -56,12 +65,15 @@ public class CommandSender extends SwingWorker<String, Object> {
                         buffer.append("CNC MACHINES\n\n");
                         for (Machine machine : responseObject.ResponseBody.CNCMachines)
                             buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
+                        buffer.append(dividerMaker());
                         buffer.append("DÖKÜM MACHINES\n\n");
                         for (Machine machine : responseObject.ResponseBody.DOKUMMachines)
                             buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
+                        buffer.append(dividerMaker());
                         buffer.append("KILIF MACHINES\n\n");
                         for (Machine machine : responseObject.ResponseBody.KILIFMachines)
                             buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
+                        buffer.append(dividerMaker());
                         buffer.append("KAPLAMA MACHINES\n\n");
                         for (Machine machine : responseObject.ResponseBody.KAPLAMAMachines)
                             buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
@@ -85,6 +97,7 @@ public class CommandSender extends SwingWorker<String, Object> {
                                 responseObject.ResponseBody.Machine.MachineProductionSpeed,
                                 responseObject.ResponseBody.Machine.MachineState
                         ));
+                        buffer.append(dividerMaker());
                         buffer.append("COMPLETED JOBS\n\n");
                         for (Job job : responseObject.ResponseBody.CompletedJobs)
                             buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
@@ -103,12 +116,15 @@ public class CommandSender extends SwingWorker<String, Object> {
                         buffer.append("CNC JOB ORDERS\n\n");
                         for (Job job : responseObject.ResponseBody.CNCJobOrders)
                             buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
+                        buffer.append(dividerMaker());
                         buffer.append("DÖKÜM JOB ORDERS\n\n");
                         for (Job job : responseObject.ResponseBody.DOKUMJobOrders)
                             buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
+                        buffer.append(dividerMaker());
                         buffer.append("KILIF JOB ORDERS\n\n");
                         for (Job job : responseObject.ResponseBody.KILIFJobOrders)
                             buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
+                        buffer.append(dividerMaker());
                         buffer.append("KAPLAMA JOB ORDERS\n\n");
                         for (Job job : responseObject.ResponseBody.KAPLAMAJobOrders)
                             buffer.append(jobInformationFormatter(job.JobUniqueId, job.JobType, job.JobLength, job.JobState));
@@ -123,8 +139,12 @@ public class CommandSender extends SwingWorker<String, Object> {
                     Response<GetMachineStatesResponse> responseObject = gson.fromJson(response, type);
                     if(responseObject.ResponseCode == 170){
                         buffer = new StringBuffer();
-                        for (Machine machine : responseObject.ResponseBody.Machines)
+                        buffer.append("MACHINE STATES\n\n");
+                        buffer.append(dividerMaker());
+                        for (Machine machine : responseObject.ResponseBody.Machines) {
                             buffer.append(machineInformationFormatter(machine.MachineUniqueId, machine.MachineName, machine.MachineType, machine.MachineProductionSpeed, machine.MachineState));
+                            buffer.append(dividerMaker());
+                        }
                         responseJTextArea.setText(String.valueOf(buffer));
                     } else {
                         responseJTextArea.setText("Response Code:\t" + responseObject.ResponseCode + "\n" + "Response Message:\t" + responseObject.ResponseMessage);
@@ -137,6 +157,7 @@ public class CommandSender extends SwingWorker<String, Object> {
 
                     if(responseObject.ResponseCode == 140){
                         buffer = new StringBuffer();
+                        buffer.append("PROCESSING JOB ORDERS IN MACHINES\n\n");
                         for (int index = 0; index < responseObject.ResponseBody.Machines.size(); ++index) {
                             buffer.append("MACHINE\n\n");
                             buffer.append(machineInformationFormatter(
@@ -154,6 +175,7 @@ public class CommandSender extends SwingWorker<String, Object> {
                                     responseObject.ResponseBody.Jobs.get(index).JobLength,
                                     responseObject.ResponseBody.Jobs.get(index).JobState
                             ));
+                            buffer.append(dividerMaker());
                         }
                         responseJTextArea.setText(String.valueOf(buffer));
                     } else {
@@ -188,12 +210,21 @@ public class CommandSender extends SwingWorker<String, Object> {
         StringBuffer buffer = new StringBuffer();
 
         buffer.append(
-            "Job Unique Id:\t" + jobId + "\n" +
-            "Job Type:\t" + jobType + "\n" +
-            "Job Length:\t" + jobLength + "\n" +
-            "Job State:\t" + jobState + "\n\n"
+            "Job Unique Id:\t\t" + jobId + "\n" +
+            "Job Type:\t\t" + jobType + "\n" +
+            "Job Length:\t\t" + jobLength + "\n" +
+            "Job State:\t\t" + jobState + "\n\n"
         );
 
+        return String.valueOf(buffer);
+    }
+
+    String dividerMaker(){
+        StringBuffer buffer = new StringBuffer();
+        for (int i = 0; i < 80; ++i){
+            buffer.append("-");
+        }
+        buffer.append("\n\n");
         return String.valueOf(buffer);
     }
 }
