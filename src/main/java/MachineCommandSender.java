@@ -1,33 +1,30 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowStateListener;
 import java.io.PrintWriter;
-import java.lang.reflect.Type;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
 
 public class MachineCommandSender extends SwingWorker<String, Object> {
     private final String message;
-    Scanner networkInput;
-    PrintWriter networkOutput;
-    JTextArea responseJTextArea;
-    GsonBuilder gsonBuilder = new GsonBuilder();
-    Gson gson = gsonBuilder.create();
-    JTextField machineUniqueIdJTextField;
-    JTextField machineNameJTextField;
-    JTextField machineTypeJTextField;
-    JTextField machineProductionSpeedJTextField;
-    JPanel buttonAndResponseCodePanel;
-    JButton addMachineJButton;
-    JButton removeMachineJButton;
-    Window window;
-    JFrame jFrame;
+    private final Scanner networkInput;
+    private final PrintWriter networkOutput;
+    private final JTextArea responseJTextArea;
+    private final GsonBuilder gsonBuilder = new GsonBuilder();
+    private final Gson gson = gsonBuilder.create();
+    private final JTextField machineUniqueIdJTextField;
+    private final  JTextField machineNameJTextField;
+    private final  JTextField machineTypeJTextField;
+    private final JTextField machineProductionSpeedJTextField;
+    private final JPanel buttonAndResponseCodePanel;
+    private final  JButton addMachineJButton;
+    private final JButton removeMachineJButton;
+    private final Window window;
+    private final  JFrame jFrame;
 
     MachineCommandSender(
             String message,
@@ -70,7 +67,6 @@ public class MachineCommandSender extends SwingWorker<String, Object> {
     protected void done()
     {
         String response, command;
-        StringBuffer buffer = new StringBuffer();
 
         try
         {

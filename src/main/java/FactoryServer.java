@@ -16,11 +16,11 @@ public class FactoryServer
 {
 	private static ServerSocket serverSocket;
 	private static final int PORT = 9999;
-	private static CustomArrayList<Machine> machinesSharedLocation = new SynchedCustomArrayList<Machine>();
-	private static CustomArrayList<Job> jobsSharedLocation = new SynchedCustomArrayList<Job>();
+	private static CustomArrayList<Machine> machinesSharedLocation = new SyncedCustomArrayList<Machine>();
+	private static CustomArrayList<Job> jobsSharedLocation = new SyncedCustomArrayList<Job>();
 	private static ArrayList<User> users = new ArrayList<User>();
 	private static final ExecutorService executorService = Executors.newCachedThreadPool();
-	private static CustomMap jobSchedulingSharedLocation = new SynchedCustomMap();
+	private static CustomMap jobSchedulingSharedLocation = new SyncedCustomMap();
 
 	static Map<String, String> USERNAME_PASSWORD_MAP = new HashMap<String, String>();
 
@@ -739,6 +739,12 @@ class ClientHandler extends Thread
 			e.printStackTrace();
 		}
 
+		long bigFixedValue = 999999999999L;
+		long comparisonDelay = bigFixedValue;
+
+		int machineId = 0;
+		int jobId = 0;
+
 		for (Job job: jobs){
 			if(job.JobState.equals("PENDING")){
 				for(Machine machine: machines){
@@ -748,11 +754,28 @@ class ClientHandler extends Thread
 							int productLength = Integer.parseInt(job.JobLength.split(" ")[0]);
 							//long delay = productLength / productionSpeed * 1000L * 60L;
 							long delay = productLength / productionSpeed * 1000L;
+							if(comparisonDelay > delay){
+								comparisonDelay = delay;
+								machineId = machine.MachineUniqueId;
+								jobId = job.JobUniqueId;
+							}
+
+						}
+					}
+				}
+			}
+		}
+
+		if(machineId != 0 && jobId != 0 && comparisonDelay != bigFixedValue){
+			for (Job job: jobs){
+				if(job.JobUniqueId == jobId){
+					for(Machine machine: machines){
+						if(machine.MachineUniqueId == machineId){
 							machine.MachineState = "BUSY";
 							job.JobState = "PROCESSING";
 							executorService.execute(new JobAssignmentProducer(jobSchedulingSharedLocation, machine.MachineUniqueId, job.JobUniqueId));
 							System.out.println("Job assigned.");
-							completeJob(machine.MachineUniqueId, job.JobUniqueId, delay);
+							completeJob(machine.MachineUniqueId, job.JobUniqueId, comparisonDelay);
 							break;
 						}
 					}

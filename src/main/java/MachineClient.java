@@ -18,8 +18,8 @@ public class MachineClient extends JFrame implements KeyListener {
 	static Scanner networkInput;
 	static PrintWriter networkOutput;
 
-	static private GsonBuilder gsonBuilder = new GsonBuilder();
-	static private Gson gson = gsonBuilder.serializeNulls().create();
+	static private final GsonBuilder gsonBuilder = new GsonBuilder();
+	static private final Gson gson = gsonBuilder.serializeNulls().create();
 
 	private final JPanel machinePropsPanel = new JPanel( new GridLayout( 4, 2, 5, 5 ) );
 	private final JPanel buttonAndResponseCodePanel = new JPanel( new GridLayout( 2, 1, 5, 5 ) );
@@ -31,8 +31,8 @@ public class MachineClient extends JFrame implements KeyListener {
 	private final JButton removeMachineJButton = new JButton( "Remove Machine" );
 	private final JTextArea responseJTextArea = new JTextArea();
 
-	Window window;
-	JFrame jFrame;
+	private final Window window;
+	private final JFrame jFrame;
 
 	MachineClient(Scanner networkInput, PrintWriter networkOutput, Gson gson){
 		super( "Machine Client" );

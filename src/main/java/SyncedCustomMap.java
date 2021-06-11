@@ -4,7 +4,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class SynchedCustomMap implements CustomMap {
+public class SyncedCustomMap implements CustomMap {
    private final Lock accessLock = new ReentrantLock();
 
    private HashMap<Integer, ArrayList<Integer>> jobAssignment = new HashMap<Integer, ArrayList<Integer>>();
@@ -21,7 +21,7 @@ public class SynchedCustomMap implements CustomMap {
 
          jobAssignment.put(machineId, jobList);
 
-         System.out.println("Job Setted: " + machineId + " with value: " + jobId);
+         System.out.println("Job Set: " + machineId + " with value: " + jobId);
       }
       finally {
          accessLock.unlock();

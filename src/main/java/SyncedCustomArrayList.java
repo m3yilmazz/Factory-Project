@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class SynchedCustomArrayList<T> implements CustomArrayList<T> {
+public class SyncedCustomArrayList<T> implements CustomArrayList<T> {
     private final Lock accessLock = new ReentrantLock();
 
     private ArrayList<T> arrayList = new ArrayList<T>();
@@ -11,12 +11,10 @@ public class SynchedCustomArrayList<T> implements CustomArrayList<T> {
     public void set(T object) throws InterruptedException {
         accessLock.lock();
 
-        try
-        {
+        try {
             arrayList.add(object);
         }
-        finally
-        {
+        finally {
             accessLock.unlock();
         }
     }
@@ -24,12 +22,13 @@ public class SynchedCustomArrayList<T> implements CustomArrayList<T> {
     @Override
     public ArrayList<T> get() throws InterruptedException {
         accessLock.lock();
+
         ArrayList<T> _arrayList;
-        try{
+
+        try {
             _arrayList = arrayList;
         }
-        finally
-        {
+        finally {
             accessLock.unlock();
         }
 
