@@ -35,7 +35,7 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 
 	private final JPanel commandButtonsPanel = new JPanel( new GridLayout( 8, 1, 5, 5 ) );
 	private final JPanel getMachineInformationInputPanel = new JPanel( new GridLayout( 1, 2, 5, 5 ) );
-	private final JPanel sendJobOrderInputPanel = new JPanel( new GridLayout( 4, 2, 5, 5 ) );
+	private final JPanel sendJobOrderInputPanel = new JPanel( new GridLayout( 3, 2, 5, 5 ) );
 	private final JPanel responseJPanel = new JPanel( new GridLayout( 1, 1, 5, 5 ) );
 
 	private final JButton getMachinesJButton = new JButton( "Get Machines" );
