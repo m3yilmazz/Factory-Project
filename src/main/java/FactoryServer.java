@@ -103,7 +103,7 @@ class ClientHandler extends Thread
 
 	@Override
 	public void run() {
-		String received, command, argumentsJsonString;
+		String received, command;
 
 		do {
 			try{
@@ -113,9 +113,6 @@ class ClientHandler extends Thread
 				break;
 			}
 
-			String[] splitReceived = received.split("\\u002A");
-
-			//command = splitReceived[0];
 			Request<String> requestJson = gson.fromJson(received, Request.class);
 			command = requestJson.RequestCommand;
 
@@ -146,6 +143,7 @@ class ClientHandler extends Thread
 
 					for (User user : users) {
 						if (receivedUser.UserName.equals(user.UserName)) {
+							isUserNameOrPasswordIsWrong = false;
 							if (user.UserStatus.equals(User.ONLINE)) {
 								output.println(gson.toJson(ErrorResponses.RESPONSE_201));
 								break;
@@ -154,12 +152,11 @@ class ClientHandler extends Thread
 								if (receivedUser.UserPassword.equals(user.UserPassword)) {
 									user.UserStatus = User.ONLINE;
 									output.println(gson.toJson(SuccessfulResponses.RESPONSE_100));
-									isUserNameOrPasswordIsWrong = false;
 									System.out.println(user.UserName + " has logged in.");
 									break;
 								}
 								else {
-									output.println(gson.toJson(ErrorResponses.RESPONSE_200));
+									isUserNameOrPasswordIsWrong = true;
 									break;
 								}
 							}
@@ -309,6 +306,8 @@ class ClientHandler extends Thread
 				case Commands.REMOVE_MACHINE -> {
 					MachineIdRequest receivedMachineId = new MachineIdRequest(0);
 					boolean isRemovingSuccessful = false;
+					boolean isMachineBusy = false;
+
 					Machine removedMachine = new Machine(0, null, null, null);
 					try {
 						Type type = new TypeToken<Request<MachineIdRequest>>() {}.getType();
@@ -342,16 +341,19 @@ class ClientHandler extends Thread
 					for (Machine machine : machines) {
 						if (machine.MachineUniqueId == receivedMachineId.MachineId) {
 							if(machine.MachineState.equals(Machine.MACHINE_STATE_BUSY)){
+								isMachineBusy = true;
 								output.println(gson.toJson(ErrorResponses.RESPONSE_281));
 								break;
 							}
-							removedMachine = machine;
+							else {
+								removedMachine = machine;
 
-							executorService.execute(new JobAssignmentRemover(jobSchedulingSharedLocation, receivedMachineId.MachineId));
-							machines.remove(machine);
+								executorService.execute(new JobAssignmentRemover(jobSchedulingSharedLocation, receivedMachineId.MachineId));
+								machines.remove(machine);
 
-							isRemovingSuccessful = true;
-							break;
+								isRemovingSuccessful = true;
+								break;
+							}
 						}
 					}
 
@@ -366,7 +368,7 @@ class ClientHandler extends Thread
 								"Machine State: " + removedMachine.MachineState
 						);
 					}
-					else {
+					else if(!isRemovingSuccessful && !isMachineBusy) {
 						output.println(gson.toJson(ErrorResponses.RESPONSE_280));
 					}
 				}
