@@ -260,14 +260,6 @@ public class UserClient extends JFrame implements WindowListener, KeyListener {
 		UserClient userClient = new UserClient(networkInput, networkOutput, gson);
 	}
 
-	private static String sendCommand(String request, Scanner networkInput, PrintWriter networkOutput)
-	{
-		String responseCode;
-		networkOutput.println(request);
-		responseCode = networkInput.nextLine();
-		return  responseCode;
-	}
-
 	@Override
 	public void windowOpened(WindowEvent e) { }
 
